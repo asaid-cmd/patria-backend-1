@@ -23,7 +23,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      MONGODB_URI: mongodb://admin:password123@mongodb:27017/patria
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/patria?authSource=admin
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-patria_secret_key_dev}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-patria_refresh_key_dev}
       JWT_ACCESS_EXPIRY: 15m

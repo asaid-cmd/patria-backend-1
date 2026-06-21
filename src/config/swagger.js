@@ -11,6 +11,10 @@ const swaggerOptions = {
     },
     servers: [
       {
+        url: 'https://api.patriacoffeebeans.com/api',
+        description: 'Production Server',
+      },
+      {
         url: `http://localhost:${process.env.PORT || 5000}/api`,
         description: 'Development Server',
       },

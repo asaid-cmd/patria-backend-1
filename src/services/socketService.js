@@ -3,7 +3,7 @@ let io = null;
 const initSocket = (server) => {
   const socketIO = require('socket.io')(server, {
     cors: {
-      origin: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
+      origin: (origin, callback) => callback(null, true),
       credentials: true,
     },
   });

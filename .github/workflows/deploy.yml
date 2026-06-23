@@ -1,79 +1,57 @@
 name: Deploy Patria Backend Production
 
-
-
 on:
-
   push:
-
     branches:
-
       - main
 
-
-
 jobs:
-
   deploy:
-
     runs-on: ubuntu-latest
 
-
-
     steps:
-
       - name: Checkout Code
-
         uses: actions/checkout@v4
 
+      - name: Show Runner IP (for firewall whitelist debugging)
+        run: |
+          echo "GitHub Actions runner IP:"
+          curl -s https://api.ipify.org
+          echo ""
 
+      - name: Wait for SSH to be available
+        run: |
+          echo "Testing TCP connectivity to ${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PORT || '22' }}..."
+          for i in 1 2 3; do
+            if nc -zw 10 ${{ secrets.SERVER_HOST }} ${{ secrets.SERVER_PORT || 22 }}; then
+              echo "✅ SSH port is reachable"
+              break
+            fi
+            echo "⚠️  Attempt $i failed — retrying in 10s..."
+            sleep 10
+          done
 
       - name: Deploy to VPS via SSH
-
         uses: appleboy/ssh-action@v1.0.3
-
         with:
-
           host: ${{ secrets.SERVER_HOST }}
-
           username: ${{ secrets.SERVER_USER }}
-
           key: ${{ secrets.SERVER_SSH_KEY }}
-
-          port: 22
-
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          timeout: 60s
+          command_timeout: 20m
           script: |
+            set -e
 
-            # Navigate to the project deployment directory
-
+            echo "📂 Navigating to project directory..."
             cd /var/www/patria-backend-1
 
-
-
-            # Fetch the absolute latest changes from repository
-
+            echo "⬇️  Pulling latest changes..."
             git pull origin main
 
-
-
-            # Rebuild and restart the Docker stack cleanly
-
-            # Using --build ensures any code changes in your Node.js app are re-compiled
-
+            echo "🐳 Rebuilding Docker containers..."
             docker compose down
-
             docker compose up -d --build
 
-
-
-            # Optional/Recommended: If you are using Prisma or database migrations inside the backend container, 
-
-            # run the migration script inside the active container environment:
-
-            # docker compose exec -T backend npx prisma migrate deploy
-
-
-
-            # Verify the status of running containers
-
-            #docker compose ps
+            echo "✅ Deploy complete!"
+            docker compose ps

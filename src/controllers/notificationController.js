@@ -1,12 +1,13 @@
-const Notification = require('../models/Notification');
-const Customer = require('../models/Customer');
+const UserNotification = require('../models/UserNotification');
+const Customer         = require('../models/Customer');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
-const { getPaginationParams, paginatedResult } = require('../utils/pagination');
+const { getPaginationParams }    = require('../utils/pagination');
 
+/* ── Dashboard: legacy notification list ────────────────────────────── */
 exports.getNotifications = async (req, res) => {
   try {
-    const { userId } = req.query;
-    const notifications = await Notification.find({ userId, isRead: false }).sort({ createdAt: -1 });
+    const Notification = require('../models/Notification');
+    const notifications = await Notification.find().sort({ createdAt: -1 }).limit(100);
     sendSuccess(res, { notifications });
   } catch (error) {
     sendError(res, error.message, 500, error);
@@ -15,8 +16,10 @@ exports.getNotifications = async (req, res) => {
 
 exports.markAsRead = async (req, res) => {
   try {
-    const { id } = req.params;
-    const notification = await Notification.findByIdAndUpdate(id, { isRead: true }, { new: true });
+    const Notification = require('../models/Notification');
+    const notification = await Notification.findByIdAndUpdate(
+      req.params.id, { isRead: true }, { new: true }
+    );
     if (!notification) return sendError(res, 'Notification not found', 404);
     sendSuccess(res, { notification });
   } catch (error) {
@@ -24,12 +27,11 @@ exports.markAsRead = async (req, res) => {
   }
 };
 
-// v2 customer notification endpoints
+/* ── Mobile: FCM device token management ────────────────────────────── */
 exports.registerDeviceToken = async (req, res) => {
   try {
-    const { fcmToken, platform } = req.body;
+    const { fcmToken } = req.body;
     if (!fcmToken) return sendError(res, 'fcmToken is required', 400);
-
     await Customer.findByIdAndUpdate(req.user.id, { $addToSet: { fcmTokens: fcmToken } });
     sendSuccess(res, null, 'Device token registered');
   } catch (error) {
@@ -41,7 +43,6 @@ exports.unregisterDeviceToken = async (req, res) => {
   try {
     const { fcmToken } = req.body;
     if (!fcmToken) return sendError(res, 'fcmToken is required', 400);
-
     await Customer.findByIdAndUpdate(req.user.id, { $pull: { fcmTokens: fcmToken } });
     sendSuccess(res, null, 'Device token removed');
   } catch (error) {
@@ -49,15 +50,25 @@ exports.unregisterDeviceToken = async (req, res) => {
   }
 };
 
+/* ── Mobile: customer notifications inbox ───────────────────────────── */
 exports.getCustomerNotifications = async (req, res) => {
   try {
     const { skip, limit, page } = getPaginationParams(req.query);
-    const notifications = await Notification.find({ customerId: req.user.id })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-    const total = await Notification.countDocuments({ customerId: req.user.id });
-    sendSuccess(res, paginatedResult(notifications, total, page, limit));
+    const filter = { customerId: req.user.id };
+
+    const [notifications, unreadCount, total] = await Promise.all([
+      UserNotification.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      UserNotification.countDocuments({ ...filter, read: false }),
+      UserNotification.countDocuments(filter),
+    ]);
+
+    sendSuccess(res, {
+      notifications,
+      unreadCount,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     sendError(res, error.message, 500, error);
   }
@@ -65,8 +76,11 @@ exports.getCustomerNotifications = async (req, res) => {
 
 exports.getUnreadCount = async (req, res) => {
   try {
-    const count = await Notification.countDocuments({ customerId: req.user.id, isRead: false });
-    sendSuccess(res, { count });
+    const unreadCount = await UserNotification.countDocuments({
+      customerId: req.user.id,
+      read: false,
+    });
+    sendSuccess(res, { unreadCount });
   } catch (error) {
     sendError(res, error.message, 500, error);
   }
@@ -74,7 +88,10 @@ exports.getUnreadCount = async (req, res) => {
 
 exports.markAllRead = async (req, res) => {
   try {
-    await Notification.updateMany({ customerId: req.user.id, isRead: false }, { isRead: true });
+    await UserNotification.updateMany(
+      { customerId: req.user.id, read: false },
+      { read: true }
+    );
     sendSuccess(res, null, 'All notifications marked as read');
   } catch (error) {
     sendError(res, error.message, 500, error);
@@ -83,10 +100,9 @@ exports.markAllRead = async (req, res) => {
 
 exports.markOneRead = async (req, res) => {
   try {
-    const { id } = req.params;
-    const notification = await Notification.findOneAndUpdate(
-      { _id: id, customerId: req.user.id },
-      { isRead: true },
+    const notification = await UserNotification.findOneAndUpdate(
+      { _id: req.params.id, customerId: req.user.id },
+      { read: true },
       { new: true }
     );
     if (!notification) return sendError(res, 'Notification not found', 404);

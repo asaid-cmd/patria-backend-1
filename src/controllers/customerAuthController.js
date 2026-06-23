@@ -6,11 +6,14 @@ const generateCustomerToken = (customerId) => {
   return jwt.sign(
     { id: customerId, role: 'customer' },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.JWT_ACCESS_EXPIRY || '15m' }
+    { expiresIn: '7d' }
   );
 };
 
 const generateOtp = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+// In-memory OTP rate limiter — 45 second cooldown per phone
+const otpLastSent = new Map();
 
 exports.register = async (req, res) => {
   try {
@@ -33,7 +36,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const { phone, password, fcmToken } = req.body;
     if (!phone || !password) return sendError(res, 'phone and password are required', 400);
 
     const customer = await Customer.findOne({ phone });
@@ -41,6 +44,11 @@ exports.login = async (req, res) => {
 
     const valid = await customer.comparePassword(password);
     if (!valid) return sendError(res, 'Invalid credentials', 401);
+
+    // Register FCM token on login
+    if (fcmToken) {
+      await Customer.findByIdAndUpdate(customer._id, { $addToSet: { fcmTokens: fcmToken } });
+    }
 
     const token = generateCustomerToken(customer._id);
     sendSuccess(res, { customer: customer.toJSON(), token }, 'Login successful');
@@ -54,6 +62,13 @@ exports.sendVerification = async (req, res) => {
     const { phone } = req.body;
     if (!phone) return sendError(res, 'phone is required', 400);
 
+    // Rate limit: 45 second cooldown
+    const lastSent = otpLastSent.get(phone);
+    if (lastSent && Date.now() - lastSent < 45000) {
+      const wait = Math.ceil((45000 - (Date.now() - lastSent)) / 1000);
+      return sendError(res, `Please wait ${wait} seconds before resending`, 429);
+    }
+
     const otp = generateOtp();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -63,8 +78,10 @@ exports.sendVerification = async (req, res) => {
       { upsert: false }
     );
 
-    // In production: send OTP via SMS
-    sendSuccess(res, { otp }, 'Verification code sent');
+    otpLastSent.set(phone, Date.now());
+
+    // In production: send OTP via WhatsApp/SMS
+    sendSuccess(res, process.env.NODE_ENV === 'development' ? { otp } : {}, 'Verification code sent');
   } catch (error) {
     sendError(res, error.message, 500, error);
   }

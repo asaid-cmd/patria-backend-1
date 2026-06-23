@@ -6,13 +6,31 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl",    "value": "https://api.patriacoffeebeans.com", "type": "string" },
-    { "key": "token",      "value": "", "type": "string" },
-    { "key": "driverPhone","value": "01012345678", "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "https://api.patriacoffeebeans.com",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "driverPhone",
+      "value": "01012345678",
+      "type": "string"
+    }
   ],
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "item": [
     {
@@ -33,10 +51,28 @@
             }
           ],
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/drivers/login" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"{{driverPhone}}\",\n  \"password\": \"password123\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/login",
+              "path": [
+                "api",
+                "driver",
+                "login"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{driverPhone}}\",\n  \"password\": \"password123\"\n}"
+            }
           }
         }
       ]
@@ -48,23 +84,52 @@
           "name": "Get My Profile + Shift Stats",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/drivers/me" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/me",
+              "path": [
+                "api",
+                "driver",
+                "me"
+              ]
+            }
           }
         },
         {
           "name": "Update My Profile",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/drivers/me" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ahmed Driver\",\n  \"phone\": \"01012345678\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/me",
+              "path": [
+                "api",
+                "driver",
+                "me"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmed Driver\",\n  \"phone\": \"01012345678\"\n}"
+            }
           }
         },
         {
           "name": "Delete My Account",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/drivers/me" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/me",
+              "path": [
+                "api",
+                "driver",
+                "me"
+              ]
+            }
           }
         }
       ]
@@ -76,27 +141,75 @@
           "name": "Start Shift",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/drivers/shift/start" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/shift/start",
+              "path": [
+                "api",
+                "driver",
+                "shift",
+                "start"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         },
         {
           "name": "End Shift",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/drivers/shift/end" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/shift/end",
+              "path": [
+                "api",
+                "driver",
+                "shift",
+                "end"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         },
         {
           "name": "Request Overtime",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/drivers/shift/request-overtime" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/shift/request-overtime",
+              "path": [
+                "api",
+                "driver",
+                "shift",
+                "request-overtime"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         }
       ]
@@ -108,25 +221,59 @@
           "name": "Get My Orders (Active + History 30 days)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/drivers/my-orders" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/my-orders",
+              "path": [
+                "api",
+                "driver",
+                "my-orders"
+              ]
+            }
           }
         },
         {
           "name": "Get Today Orders (In Progress + Delivered)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/drivers/orders" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/orders",
+              "path": [
+                "api",
+                "driver",
+                "orders"
+              ]
+            }
           }
         },
         {
           "name": "Update Order Delivery Status",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/drivers/orders/:orderId/status",
-              "variable": [{ "key": "orderId", "value": "ORDER_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/orders/:orderId/status",
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "ORDER_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "driver",
+                "orders",
+                ":orderId",
+                "status"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"deliveryStatus\": \"Picking Up\"\n}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliveryStatus\": \"Picking Up\"\n}",
               "options": {
                 "raw": {
                   "language": "json",
@@ -145,9 +292,24 @@
           "name": "Update GPS Location",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/drivers/location" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"lat\": 31.2156,\n  \"lng\": 29.9553,\n  \"accuracy\": 15.0\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/location",
+              "path": [
+                "api",
+                "driver",
+                "location"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 31.2156,\n  \"lng\": 29.9553,\n  \"accuracy\": 15.0\n}"
+            }
           }
         }
       ]
@@ -159,18 +321,48 @@
           "name": "Register FCM Token (after login)",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/drivers/fcm-token" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/fcm-token",
+              "path": [
+                "api",
+                "driver",
+                "fcm-token"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\"\n}"
+            }
           }
         },
         {
           "name": "Unregister FCM Token (on logout)",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/drivers/fcm-token" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/fcm-token",
+              "path": [
+                "api",
+                "driver",
+                "fcm-token"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\"\n}"
+            }
           }
         }
       ]
@@ -182,22 +374,50 @@
           "name": "Get Notifications",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/drivers/notifications?limit=50" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/notifications?limit=50",
+              "path": [
+                "api",
+                "driver",
+                "notifications"
+              ]
+            }
           }
         },
         {
           "name": "Mark All as Read",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/api/drivers/notifications/mark-read" }
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/notifications/mark-read",
+              "path": [
+                "api",
+                "driver",
+                "notifications",
+                "mark-read"
+              ]
+            }
           }
         },
         {
           "name": "Mark Single Notification as Read",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/api/drivers/notifications/:id/read",
-              "variable": [{ "key": "id", "value": "NOTIFICATION_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/notifications/:id/read",
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "NOTIFICATION_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "driver",
+                "notifications",
+                ":id",
+                "read"
+              ]
             }
           }
         }

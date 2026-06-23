@@ -6,12 +6,26 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "https://api.patriacoffeebeans.com", "type": "string" },
-    { "key": "token",   "value": "", "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "https://api.patriacoffeebeans.com",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
   ],
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "item": [
     {
@@ -20,73 +34,223 @@
         {
           "name": "Register",
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/auth/register" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ahmed Said\",\n  \"email\": \"ahmed@example.com\",\n  \"phone\": \"01012345678\",\n  \"password\": \"password123\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/register",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "register"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmed Said\",\n  \"email\": \"ahmed@example.com\",\n  \"phone\": \"01012345678\",\n  \"password\": \"password123\"\n}"
+            }
           }
         },
         {
           "name": "Login",
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/auth/login" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"01012345678\",\n  \"password\": \"password123\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/login",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "login"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01012345678\",\n  \"password\": \"password123\"\n}"
+            }
           }
         },
         {
           "name": "Send Phone Verification",
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/auth/send-verification" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"01012345678\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/send-verification",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "send-verification"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01012345678\"\n}"
+            }
           }
         },
         {
           "name": "Verify Phone",
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/auth/verify-phone" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"01012345678\",\n  \"code\": \"1234\",\n  \"fcmToken\": \"device_fcm_token_here\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/verify-phone",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "verify-phone"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01012345678\",\n  \"code\": \"1234\",\n  \"fcmToken\": \"device_fcm_token_here\"\n}"
+            }
           }
         },
         {
           "name": "Forgot Password",
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/auth/forgot-password" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"01012345678\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/forgot-password",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01012345678\"\n}"
+            }
           }
         },
         {
           "name": "Reset Password",
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/auth/reset-password" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"01012345678\",\n  \"code\": \"1234\",\n  \"newPassword\": \"newPassword123\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/reset-password",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"01012345678\",\n  \"code\": \"1234\",\n  \"newPassword\": \"newPassword123\"\n}"
+            }
           }
         },
         {
           "name": "Google OAuth Login",
           "request": {
-            "method": "POST", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/auth/oauth/login" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"google_id_token_here\"\n}" }
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/oauth/login",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "oauth",
+                "login"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"google_id_token_here\"\n}"
+            }
           }
         },
         {
           "name": "Change Password",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/auth/change-password" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"oldPassword123\",\n  \"newPassword\": \"newPassword456\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/auth/change-password",
+              "path": [
+                "api",
+                "mobile",
+                "auth",
+                "change-password"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"oldPassword123\",\n  \"newPassword\": \"newPassword456\"\n}"
+            }
           }
         }
       ]
@@ -98,41 +262,104 @@
           "name": "Get Profile",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/users/profile" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile",
+              "path": [
+                "api",
+                "mobile",
+                "profile"
+              ]
+            }
           }
         },
         {
           "name": "Update Profile",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/users/profile" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ahmed Said\",\n  \"email\": \"ahmed@example.com\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile",
+              "path": [
+                "api",
+                "mobile",
+                "profile"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmed Said\",\n  \"email\": \"ahmed@example.com\"\n}"
+            }
           }
         },
         {
           "name": "Update Password",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/users/password" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"old123\",\n  \"newPassword\": \"new456\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile/password",
+              "path": [
+                "api",
+                "mobile",
+                "profile",
+                "password"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"old123\",\n  \"newPassword\": \"new456\"\n}"
+            }
           }
         },
         {
           "name": "Get Loyalty Points",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/users/loyalty" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile/loyalty",
+              "path": [
+                "api",
+                "mobile",
+                "profile",
+                "loyalty"
+              ]
+            }
           }
         },
         {
           "name": "Loyalty Checkout Preview",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/users/loyalty/checkout-preview" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"pointsToRedeem\": 100,\n  \"orderTotal\": 250\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile/loyalty/checkout-preview",
+              "path": [
+                "api",
+                "mobile",
+                "profile",
+                "loyalty",
+                "checkout-preview"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pointsToRedeem\": 100,\n  \"orderTotal\": 250\n}"
+            }
           }
         }
       ]
@@ -143,16 +370,41 @@
         {
           "name": "Get All Products",
           "request": {
-            "method": "GET", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/products?category=&search=&page=1&limit=20" }
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/products?category=&search=&page=1&limit=20",
+              "path": [
+                "api",
+                "mobile",
+                "products"
+              ]
+            }
           }
         },
         {
           "name": "Get Product by ID",
           "request": {
-            "method": "GET", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/products/:id",
-              "variable": [{ "key": "id", "value": "PRODUCT_ID_HERE" }]
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/products/:id",
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "PRODUCT_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "products",
+                ":id"
+              ]
             }
           }
         },
@@ -160,11 +412,32 @@
           "name": "Rate Product",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/products/:id/rate",
-              "variable": [{ "key": "id", "value": "PRODUCT_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/products/:id/rate",
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "PRODUCT_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "products",
+                ":id",
+                "rate"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"rating\": 5\n}" }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5\n}"
+            }
           }
         }
       ]
@@ -174,34 +447,94 @@
       "item": [
         {
           "name": "Get Cart",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/cart" } }
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cart",
+              "path": [
+                "api",
+                "mobile",
+                "cart"
+              ]
+            }
+          }
         },
         {
           "name": "Add to Cart",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/cart/add" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"PRODUCT_ID\",\n  \"quantity\": 2,\n  \"customization\": {\n    \"roastLevel\": \"Medium\",\n    \"grindType\": \"Fine\"\n  },\n  \"selectedVariants\": [],\n  \"selectedExtras\": [],\n  \"notes\": \"\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cart/add",
+              "path": [
+                "api",
+                "mobile",
+                "cart",
+                "add"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"PRODUCT_ID\",\n  \"quantity\": 2,\n  \"customization\": {\n    \"roastLevel\": \"Medium\",\n    \"grindType\": \"Fine\"\n  },\n  \"selectedVariants\": [],\n  \"selectedExtras\": [],\n  \"notes\": \"\"\n}"
+            }
           }
         },
         {
           "name": "Update Cart Item",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/cart/update/:itemId",
-              "variable": [{ "key": "itemId", "value": "ITEM_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cart/update/:itemId",
+              "variable": [
+                {
+                  "key": "itemId",
+                  "value": "ITEM_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "cart",
+                "update",
+                ":itemId"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 3\n}" }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3\n}"
+            }
           }
         },
         {
           "name": "Get Cart Item",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/cart/item/:itemId",
-              "variable": [{ "key": "itemId", "value": "ITEM_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cart/item/:itemId",
+              "variable": [
+                {
+                  "key": "itemId",
+                  "value": "ITEM_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "cart",
+                "item",
+                ":itemId"
+              ]
             }
           }
         },
@@ -209,18 +542,53 @@
           "name": "Remove Cart Item",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/cart/remove/:itemId",
-              "variable": [{ "key": "itemId", "value": "ITEM_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cart/remove/:itemId",
+              "variable": [
+                {
+                  "key": "itemId",
+                  "value": "ITEM_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "cart",
+                "remove",
+                ":itemId"
+              ]
             }
           }
         },
         {
           "name": "Clear Cart",
-          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/cart/clear" } }
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cart/clear",
+              "path": [
+                "api",
+                "mobile",
+                "cart",
+                "clear"
+              ]
+            }
+          }
         },
         {
           "name": "Cart to Order Items",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/cart/to-order-items" } }
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/cart/to-order-items",
+              "path": [
+                "api",
+                "mobile",
+                "cart",
+                "to-order-items"
+              ]
+            }
+          }
         }
       ]
     },
@@ -231,24 +599,58 @@
           "name": "Place Order",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/orders" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"orderType\": \"Delivery\",\n  \"items\": [\n    {\n      \"product\": \"PRODUCT_ID\",\n      \"name\": \"Ethiopian Coffee\",\n      \"quantity\": 2,\n      \"price\": 120,\n      \"customization\": { \"roastLevel\": \"Medium\", \"grindType\": \"Fine\" }\n    }\n  ],\n  \"customer\": {\n    \"name\": \"Ahmed Said\",\n    \"phone\": \"01012345678\",\n    \"address\": \"123 Main St, Alexandria\",\n    \"region\": \"ZONE_ID\",\n    \"location\": { \"lat\": 31.2001, \"lng\": 29.9187 }\n  },\n  \"summary\": {\n    \"subtotal\": 240,\n    \"deliveryFee\": 25,\n    \"total\": 265\n  },\n  \"payment\": { \"method\": \"Cash\" },\n  \"notes\": \"\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/orders",
+              "path": [
+                "api",
+                "mobile",
+                "orders"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderType\": \"Delivery\",\n  \"items\": [\n    {\n      \"product\": \"PRODUCT_ID\",\n      \"name\": \"Ethiopian Coffee\",\n      \"quantity\": 2,\n      \"price\": 120,\n      \"customization\": { \"roastLevel\": \"Medium\", \"grindType\": \"Fine\" }\n    }\n  ],\n  \"customer\": {\n    \"name\": \"Ahmed Said\",\n    \"phone\": \"01012345678\",\n    \"address\": \"123 Main St, Alexandria\",\n    \"region\": \"ZONE_ID\",\n    \"location\": { \"lat\": 31.2001, \"lng\": 29.9187 }\n  },\n  \"summary\": {\n    \"subtotal\": 240,\n    \"deliveryFee\": 25,\n    \"total\": 265\n  },\n  \"payment\": { \"method\": \"Cash\" },\n  \"notes\": \"\"\n}"
+            }
           }
         },
         {
           "name": "My Orders",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/orders/my-orders?page=1&limit=10" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/orders?page=1&limit=10",
+              "path": [
+                "api",
+                "mobile",
+                "orders"
+              ]
+            }
           }
         },
         {
           "name": "Get Order by ID",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/orders/:id",
-              "variable": [{ "key": "id", "value": "ORDER_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/orders/:id",
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "ORDER_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "orders",
+                ":id"
+              ]
             }
           }
         },
@@ -256,17 +658,46 @@
           "name": "Reorder",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/orders/reorder/:id",
-              "variable": [{ "key": "id", "value": "ORDER_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/orders/reorder/:id",
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "ORDER_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "orders",
+                "reorder",
+                ":id"
+              ]
             }
           }
         },
         {
           "name": "Live Tracking",
           "request": {
-            "method": "GET", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/v2/orders/:orderId/tracking",
-              "variable": [{ "key": "orderId", "value": "ORDER_ID_HERE" }]
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/orders/:orderId/tracking",
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "ORDER_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "orders",
+                ":orderId",
+                "tracking"
+              ]
             }
           }
         },
@@ -274,11 +705,32 @@
           "name": "Save Customer Location to Order",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/api/v2/orders/:orderId/customer-location",
-              "variable": [{ "key": "orderId", "value": "ORDER_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/orders/:orderId/customer-location",
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "ORDER_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "orders",
+                ":orderId",
+                "customer-location"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"lat\": 31.2001,\n  \"lng\": 29.9187\n}" }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": 31.2001,\n  \"lng\": 29.9187\n}"
+            }
           }
         }
       ]
@@ -288,34 +740,91 @@
       "item": [
         {
           "name": "Get Addresses",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v2/addresses" } }
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/addresses",
+              "path": [
+                "api",
+                "mobile",
+                "addresses"
+              ]
+            }
+          }
         },
         {
           "name": "Add Address",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/v2/addresses" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"label\": \"Home\",\n  \"address\": \"123 Main St, Alexandria\",\n  \"lat\": 31.2001,\n  \"lng\": 29.9187,\n  \"isDefault\": true\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/addresses",
+              "path": [
+                "api",
+                "mobile",
+                "addresses"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"address\": \"123 Main St, Alexandria\",\n  \"lat\": 31.2001,\n  \"lng\": 29.9187,\n  \"isDefault\": true\n}"
+            }
           }
         },
         {
           "name": "Update Address",
           "request": {
             "method": "PUT",
-            "url": { "raw": "{{baseUrl}}/api/v2/addresses/:addressId",
-              "variable": [{ "key": "addressId", "value": "ADDRESS_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/addresses/:addressId",
+              "variable": [
+                {
+                  "key": "addressId",
+                  "value": "ADDRESS_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "addresses",
+                ":addressId"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"label\": \"Work\",\n  \"address\": \"456 Office Rd\",\n  \"lat\": 31.2100,\n  \"lng\": 29.9200\n}" }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Work\",\n  \"address\": \"456 Office Rd\",\n  \"lat\": 31.2100,\n  \"lng\": 29.9200\n}"
+            }
           }
         },
         {
           "name": "Delete Address",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/v2/addresses/:addressId",
-              "variable": [{ "key": "addressId", "value": "ADDRESS_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/addresses/:addressId",
+              "variable": [
+                {
+                  "key": "addressId",
+                  "value": "ADDRESS_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "addresses",
+                ":addressId"
+              ]
             }
           }
         },
@@ -323,8 +832,21 @@
           "name": "Set Default Address",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/api/users/addresses/:id/set-default",
-              "variable": [{ "key": "id", "value": "ADDRESS_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/addresses/:id/set-default",
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "ADDRESS_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "addresses",
+                ":id",
+                "set-default"
+              ]
             }
           }
         }
@@ -337,47 +859,115 @@
           "name": "Register FCM Device Token",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/v2/notifications/device" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\",\n  \"platform\": \"android\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/notifications/device",
+              "path": [
+                "api",
+                "mobile",
+                "notifications",
+                "device"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\",\n  \"platform\": \"android\"\n}"
+            }
           }
         },
         {
           "name": "Unregister FCM Device Token",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/v2/notifications/device" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/notifications/device",
+              "path": [
+                "api",
+                "mobile",
+                "notifications",
+                "device"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"device_fcm_token_here\"\n}"
+            }
           }
         },
         {
           "name": "Get Notifications",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v2/notifications?page=1&limit=20" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/notifications?page=1&limit=20",
+              "path": [
+                "api",
+                "mobile",
+                "notifications"
+              ]
+            }
           }
         },
         {
           "name": "Get Unread Count",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v2/notifications/unread-count" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/notifications/unread-count",
+              "path": [
+                "api",
+                "mobile",
+                "notifications",
+                "unread-count"
+              ]
+            }
           }
         },
         {
           "name": "Mark All as Read",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/api/v2/notifications/read-all" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/notifications/read-all",
+              "path": [
+                "api",
+                "mobile",
+                "notifications",
+                "read-all"
+              ]
+            }
           }
         },
         {
           "name": "Mark Notification as Read",
           "request": {
             "method": "PATCH",
-            "url": { "raw": "{{baseUrl}}/api/v2/notifications/:id/read",
-              "variable": [{ "key": "id", "value": "NOTIFICATION_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/notifications/:id/read",
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "NOTIFICATION_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "notifications",
+                ":id",
+                "read"
+              ]
             }
           }
         }
@@ -388,14 +978,38 @@
       "item": [
         {
           "name": "Get Favorites",
-          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/users/favorites" } }
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile/favorites",
+              "path": [
+                "api",
+                "mobile",
+                "profile",
+                "favorites"
+              ]
+            }
+          }
         },
         {
           "name": "Add to Favorites",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/users/favorites/:productId",
-              "variable": [{ "key": "productId", "value": "PRODUCT_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile/favorites/:productId",
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "PRODUCT_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "profile",
+                "favorites",
+                ":productId"
+              ]
             }
           }
         },
@@ -403,8 +1017,21 @@
           "name": "Remove from Favorites",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/users/favorites/:productId",
-              "variable": [{ "key": "productId", "value": "PRODUCT_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/profile/favorites/:productId",
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "PRODUCT_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "profile",
+                "favorites",
+                ":productId"
+              ]
             }
           }
         }
@@ -416,17 +1043,43 @@
         {
           "name": "Get Active Offers",
           "request": {
-            "method": "GET", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/offers/active" }
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/offers",
+              "path": [
+                "api",
+                "mobile",
+                "offers"
+              ]
+            }
           }
         },
         {
           "name": "Validate Coupon",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/offers/validate" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"code\": \"SAVE20\",\n  \"orderTotal\": 300\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/offers/validate",
+              "path": [
+                "api",
+                "mobile",
+                "offers",
+                "validate"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SAVE20\",\n  \"orderTotal\": 300\n}"
+            }
           }
         }
       ]
@@ -438,37 +1091,88 @@
           "name": "Log Search Query",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/v2/customer-search/log" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"query\": \"ethiopian coffee\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/search/log",
+              "path": [
+                "api",
+                "mobile",
+                "search",
+                "log"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"ethiopian coffee\"\n}"
+            }
           }
         },
         {
           "name": "Get Last Search",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v2/customer-search/last" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/search/last",
+              "path": [
+                "api",
+                "mobile",
+                "search",
+                "last"
+              ]
+            }
           }
         },
         {
           "name": "Get Trending Searches",
           "request": {
-            "method": "GET", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/v2/customer-search/trending" }
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/search/trending",
+              "path": [
+                "api",
+                "mobile",
+                "search",
+                "trending"
+              ]
+            }
           }
         },
         {
           "name": "Get Search History",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v2/customer-search/history" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/search/history",
+              "path": [
+                "api",
+                "mobile",
+                "search",
+                "history"
+              ]
+            }
           }
         },
         {
           "name": "Clear Search History",
           "request": {
             "method": "DELETE",
-            "url": { "raw": "{{baseUrl}}/api/v2/customer-search/history" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/search/history",
+              "path": [
+                "api",
+                "mobile",
+                "search",
+                "history"
+              ]
+            }
           }
         }
       ]
@@ -480,17 +1184,45 @@
           "name": "Submit Review",
           "request": {
             "method": "POST",
-            "url": { "raw": "{{baseUrl}}/api/reviews" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"ORDER_ID_HERE\",\n  \"rating\": 5,\n  \"comment\": \"Excellent coffee!\"\n}" }
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/reviews",
+              "path": [
+                "api",
+                "mobile",
+                "reviews"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ORDER_ID_HERE\",\n  \"rating\": 5,\n  \"comment\": \"Excellent coffee!\"\n}"
+            }
           }
         },
         {
           "name": "Get Review for Order",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/reviews/order/:orderId",
-              "variable": [{ "key": "orderId", "value": "ORDER_ID_HERE" }]
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/reviews/order/:orderId",
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "ORDER_ID_HERE"
+                }
+              ],
+              "path": [
+                "api",
+                "mobile",
+                "reviews",
+                "order",
+                ":orderId"
+              ]
             }
           }
         }
@@ -502,15 +1234,36 @@
         {
           "name": "Get All Delivery Zones",
           "request": {
-            "method": "GET", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/v2/zones" }
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/zones",
+              "path": [
+                "api",
+                "mobile",
+                "zones"
+              ]
+            }
           }
         },
         {
           "name": "Zone Lookup by Coordinates",
           "request": {
-            "method": "GET", "auth": { "type": "noauth" },
-            "url": { "raw": "{{baseUrl}}/api/v2/zones/lookup?lat=31.2001&lng=29.9187" }
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/zones/lookup?lat=31.2001&lng=29.9187",
+              "path": [
+                "api",
+                "mobile",
+                "zones",
+                "lookup"
+              ]
+            }
           }
         }
       ]

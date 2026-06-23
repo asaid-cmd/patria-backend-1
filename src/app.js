@@ -9,6 +9,8 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const errorHandler = require('./middleware/errorHandler');
 const routes = require('./routes');
 const v2Routes = require('./routes/v2.routes');
+const mobileRoutes = require('./routes/mobile.routes');
+const driverMobileRoutes = require('./routes/driver.routes');
 const { swaggerOptions } = require('./config/swagger');
 
 const app = express();
@@ -46,6 +48,8 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api', routes);
 app.use('/api/v2', v2Routes);
+app.use('/api/mobile', mobileRoutes);
+app.use('/api/driver', driverMobileRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });

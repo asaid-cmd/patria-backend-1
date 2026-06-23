@@ -216,6 +216,7 @@ router.post('/dispatch', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER, ROLE
  *         description: Driver not found
  */
 router.post('/drivers/:id/complete', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), logisticsController.completeDelivery);
+router.put('/drivers/:id/credentials', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), logisticsController.setDriverPassword);
 
 /**
  * @swagger

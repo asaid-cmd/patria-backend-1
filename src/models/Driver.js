@@ -11,9 +11,9 @@ const driverNotificationSchema = new mongoose.Schema({
 
 const driverSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  phone: { type: String, required: true, unique: true },
+  phone: { type: String, unique: true, sparse: true },
   password: String,
-  whatsappPhone: String,
+  whatsappPhone: { type: String, unique: true, sparse: true },
   vehicleType: { type: String, enum: ['motorcycle', 'car', 'bicycle'], default: 'motorcycle' },
   zones: [{ type: String }],
   status: { type: String, enum: ['active', 'offline', 'busy'], default: 'offline' },

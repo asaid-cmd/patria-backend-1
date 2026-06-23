@@ -20,6 +20,8 @@ const productSchema = new mongoose.Schema({
   roastLevel: String,
   grindType: String,
   description: String,
+  avgRating: { type: Number, default: 0 },
+  ratingCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

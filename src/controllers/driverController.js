@@ -16,8 +16,9 @@ exports.login = async (req, res) => {
     const { phone, password } = req.body;
     if (!phone || !password) return sendError(res, 'phone and password are required', 400);
 
-    const driver = await Driver.findOne({ phone, isActive: true });
+    const driver = await Driver.findOne({ $or: [{ phone }, { whatsappPhone: phone }], isActive: true });
     if (!driver) return sendError(res, 'Invalid credentials', 401);
+    if (!driver.password) return sendError(res, 'Account not set up for mobile login. Contact admin to set password.', 401);
 
     const valid = await driver.comparePassword(password);
     if (!valid) return sendError(res, 'Invalid credentials', 401);

@@ -78,10 +78,8 @@ exports.getActiveOffers = async (req, res) => {
     const now = new Date();
     const offers = await Offer.find({
       status: 'active',
-      $or: [
-        { endDate: { $gte: now } },
-        { endDate: null },
-      ],
+      startDate: { $lte: now },
+      endDate: { $gte: now },
     }).populate('productIds').sort({ createdAt: -1 });
     sendSuccess(res, { offers });
   } catch (error) {
@@ -102,17 +100,13 @@ exports.validateCoupon = async (req, res) => {
     if (coupon.expiryDate && coupon.expiryDate < now) {
       return sendError(res, 'Coupon has expired', 400);
     }
-    if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
       return sendError(res, 'Coupon usage limit reached', 400);
-    }
-    if (coupon.minOrderAmount && orderTotal < coupon.minOrderAmount) {
-      return sendError(res, `Minimum order amount is ${coupon.minOrderAmount}`, 400);
     }
 
     let discount = 0;
     if (coupon.discountType === 'percentage') {
-      discount = (orderTotal * coupon.discountValue) / 100;
-      if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+      discount = ((orderTotal || 0) * coupon.discountValue) / 100;
     } else {
       discount = coupon.discountValue;
     }
@@ -125,7 +119,7 @@ exports.validateCoupon = async (req, res) => {
         discountValue: coupon.discountValue,
       },
       discount: Math.round(discount * 100) / 100,
-      newTotal: Math.max(0, orderTotal - discount),
+      newTotal: Math.max(0, (orderTotal || 0) - discount),
     });
   } catch (error) {
     sendError(res, error.message, 500, error);

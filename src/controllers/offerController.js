@@ -72,3 +72,62 @@ exports.deleteOffer = async (req, res) => {
     sendError(res, error.message, 500, error);
   }
 };
+
+exports.getActiveOffers = async (req, res) => {
+  try {
+    const now = new Date();
+    const offers = await Offer.find({
+      status: 'active',
+      $or: [
+        { endDate: { $gte: now } },
+        { endDate: null },
+      ],
+    }).populate('productIds').sort({ createdAt: -1 });
+    sendSuccess(res, { offers });
+  } catch (error) {
+    sendError(res, error.message, 500, error);
+  }
+};
+
+exports.validateCoupon = async (req, res) => {
+  try {
+    const { code, orderTotal } = req.body;
+    if (!code) return sendError(res, 'code is required', 400);
+
+    const Coupon = require('../models/Coupon');
+    const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
+    if (!coupon) return sendError(res, 'Invalid or expired coupon', 404);
+
+    const now = new Date();
+    if (coupon.expiryDate && coupon.expiryDate < now) {
+      return sendError(res, 'Coupon has expired', 400);
+    }
+    if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+      return sendError(res, 'Coupon usage limit reached', 400);
+    }
+    if (coupon.minOrderAmount && orderTotal < coupon.minOrderAmount) {
+      return sendError(res, `Minimum order amount is ${coupon.minOrderAmount}`, 400);
+    }
+
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = (orderTotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+    } else {
+      discount = coupon.discountValue;
+    }
+
+    sendSuccess(res, {
+      valid: true,
+      coupon: {
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+      },
+      discount: Math.round(discount * 100) / 100,
+      newTotal: Math.max(0, orderTotal - discount),
+    });
+  } catch (error) {
+    sendError(res, error.message, 500, error);
+  }
+};

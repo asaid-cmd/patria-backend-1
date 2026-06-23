@@ -102,3 +102,36 @@ exports.deleteReview = async (req, res) => {
     sendError(res, error.message, 500, error);
   }
 };
+
+exports.getReviewByOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const review = await Review.findOne({ orderId });
+    sendSuccess(res, { review: review || null });
+  } catch (error) {
+    sendError(res, error.message, 500, error);
+  }
+};
+
+exports.submitCustomerReview = async (req, res) => {
+  try {
+    const { orderId, rating, comment } = req.body;
+    if (!rating || rating < 1 || rating > 5) {
+      return sendError(res, 'Rating must be between 1 and 5', 400);
+    }
+
+    const existing = await Review.findOne({ orderId, customerId: req.user.id });
+    if (existing) return sendError(res, 'You already reviewed this order', 409);
+
+    const review = await Review.create({
+      customerId: req.user.id,
+      orderId,
+      rating,
+      comment,
+    });
+
+    sendSuccess(res, { review }, 'Review submitted', 201);
+  } catch (error) {
+    sendError(res, error.message, 500, error);
+  }
+};

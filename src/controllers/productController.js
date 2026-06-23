@@ -5,14 +5,45 @@ const { validators, validate } = require('../utils/validators');
 
 exports.getProducts = async (req, res) => {
   try {
-    const { categoryId } = req.query;
+    const { categoryId, category, search } = req.query;
     const { skip, limit, page } = getPaginationParams(req.query);
     const query = { isActive: true };
-    if (categoryId) query.categoryId = categoryId;
+    if (categoryId || category) query.categoryId = categoryId || category;
+    if (search) query.name = { $regex: search, $options: 'i' };
 
     const products = await Product.find(query).populate('categoryId').skip(skip).limit(limit);
     const total = await Product.countDocuments(query);
     sendSuccess(res, paginatedResult(products, total, page, limit));
+  } catch (error) {
+    sendError(res, error.message, 500, error);
+  }
+};
+
+exports.getProductById = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).populate('categoryId');
+    if (!product) return sendError(res, 'Product not found', 404);
+    sendSuccess(res, { product });
+  } catch (error) {
+    sendError(res, error.message, 500, error);
+  }
+};
+
+exports.rateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+    if (!rating || rating < 1 || rating > 5) return sendError(res, 'Rating must be between 1 and 5', 400);
+
+    const product = await Product.findById(id);
+    if (!product) return sendError(res, 'Product not found', 404);
+
+    const currentTotal = (product.avgRating || 0) * (product.ratingCount || 0);
+    const newCount = (product.ratingCount || 0) + 1;
+    const newAvg = (currentTotal + rating) / newCount;
+
+    await Product.findByIdAndUpdate(id, { avgRating: Math.round(newAvg * 10) / 10, ratingCount: newCount });
+    sendSuccess(res, { avgRating: Math.round(newAvg * 10) / 10, ratingCount: newCount }, 'Rating submitted');
   } catch (error) {
     sendError(res, error.message, 500, error);
   }

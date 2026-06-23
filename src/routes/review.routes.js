@@ -5,6 +5,16 @@ const { ROLES } = require('../config/constants');
 
 const router = express.Router();
 
+const verifyCustomer = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.role !== 'customer') {
+      const { sendError } = require('../utils/apiResponse');
+      return sendError(res, 'Customer access required', 403);
+    }
+    next();
+  });
+};
+
 /**
  * @swagger
  * tags:
@@ -85,7 +95,8 @@ router.get('/', verifyToken, reviewController.getReviews);
  *       400:
  *         description: Validation error
  */
-router.post('/', reviewController.createReview);
+router.post('/', verifyCustomer, reviewController.submitCustomerReview);
+router.get('/order/:orderId', verifyCustomer, reviewController.getReviewByOrder);
 
 /**
  * @swagger

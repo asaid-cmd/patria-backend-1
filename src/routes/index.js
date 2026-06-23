@@ -24,6 +24,9 @@ const purchasingRoutes = require('./purchasing.routes');
 const pricingRoutes = require('./pricing.routes');
 const productionRoutes = require('./production.routes');
 const logisticsRoutes = require('./logistics.routes');
+const cartRoutes = require('./cart.routes');
+const driverRoutes = require('./driver.routes');
+const zoneRoutes = require('./zone.routes');
 
 const router = express.Router();
 
@@ -52,5 +55,8 @@ router.use('/purchasing', purchasingRoutes);
 router.use('/pricing', pricingRoutes);
 router.use('/production', productionRoutes);
 router.use('/logistics', logisticsRoutes);
+router.use('/cart', cartRoutes);
+router.use('/drivers', driverRoutes);
+router.use('/zones', zoneRoutes);
 
 module.exports = router;

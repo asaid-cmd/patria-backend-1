@@ -43,6 +43,8 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
+router.get('/active', offerController.getActiveOffers);
+router.post('/validate', verifyToken, offerController.validateCoupon);
 router.get('/', verifyToken, offerController.getOffers);
 
 /**

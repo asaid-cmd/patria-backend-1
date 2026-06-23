@@ -53,7 +53,9 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.get('/', verifyToken, productController.getProducts);
+router.get('/', productController.getProducts);
+router.get('/:id', productController.getProductById);
+router.post('/:id/rate', verifyToken, productController.rateProduct);
 
 /**
  * @swagger

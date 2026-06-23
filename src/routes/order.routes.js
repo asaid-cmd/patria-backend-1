@@ -5,6 +5,16 @@ const { ROLES } = require('../config/constants');
 
 const router = express.Router();
 
+const verifyCustomer = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.role !== 'customer') {
+      const { sendError } = require('../utils/apiResponse');
+      return sendError(res, 'Customer access required', 403);
+    }
+    next();
+  });
+};
+
 /**
  * @swagger
  * tags:
@@ -49,6 +59,11 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
+// Customer mobile app order routes
+router.get('/my-orders', verifyCustomer, orderController.getMyOrders);
+router.post('/reorder/:id', verifyCustomer, orderController.reorder);
+
+// Dashboard order routes
 router.get('/', verifyToken, orderController.getOrders);
 
 /**
@@ -126,7 +141,19 @@ router.get('/:id', verifyToken, orderController.getOrderById);
  *       403:
  *         description: Forbidden - requires CASHIER, STAFF, ADMIN, or MANAGER role
  */
-router.post('/', verifyToken, authorize(ROLES.CASHIER, ROLES.STAFF, ROLES.ADMIN, ROLES.MANAGER), orderController.createOrder);
+router.post('/', (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.role === 'customer') {
+      return orderController.placeCustomerOrder(req, res, next);
+    }
+    const allowedRoles = [ROLES.CASHIER, ROLES.STAFF, ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN];
+    if (!allowedRoles.includes(req.user.role)) {
+      const { sendError } = require('../utils/apiResponse');
+      return sendError(res, 'Forbidden', 403);
+    }
+    return orderController.createOrder(req, res, next);
+  });
+});
 
 /**
  * @swagger

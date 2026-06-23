@@ -1,10 +1,24 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const { CUSTOMER_TIER } = require('../config/constants');
+
+const addressSchema = new mongoose.Schema({
+  label: { type: String, default: 'Home' },
+  address: { type: String, required: true },
+  lat: Number,
+  lng: Number,
+  isDefault: { type: Boolean, default: false },
+}, { _id: true });
 
 const customerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: String,
-  phone: String,
+  phone: { type: String, unique: true, sparse: true },
+  password: String,
+  googleId: String,
+  phoneVerified: { type: Boolean, default: false },
+  otp: String,
+  otpExpiry: Date,
   tier: {
     type: String,
     enum: Object.values(CUSTOMER_TIER),
@@ -16,7 +30,33 @@ const customerSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Customer',
   },
+  addresses: [addressSchema],
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  fcmTokens: [{ type: String }],
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
+
+customerSchema.pre('save', async function (next) {
+  if (!this.isModified('password') || !this.password) return next();
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+customerSchema.methods.comparePassword = async function (plainPassword) {
+  return bcrypt.compare(plainPassword, this.password);
+};
+
+customerSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  delete obj.otp;
+  delete obj.otpExpiry;
+  return obj;
+};
 
 module.exports = mongoose.model('Customer', customerSchema);

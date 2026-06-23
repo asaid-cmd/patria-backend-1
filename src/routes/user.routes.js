@@ -1,52 +1,42 @@
 const express = require('express');
 const userController = require('../controllers/userController');
+const customerAuthController = require('../controllers/customerAuthController');
 const { verifyToken, authorize } = require('../middleware/auth');
 const { ROLES } = require('../config/constants');
 
 const router = express.Router();
 
-/**
- * @swagger
- * /users:
- *   get:
- *     summary: Get all users
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
+const verifyCustomer = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.role !== 'customer') {
+      const { sendError } = require('../utils/apiResponse');
+      return sendError(res, 'Customer access required', 403);
+    }
+    next();
+  });
+};
+
+// Dashboard admin routes
 router.get('/', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN), userController.getAllUsers);
-
-/**
- * @swagger
- * /users:
- *   post:
- *     summary: Create user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
 router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN), userController.createUser);
-
-/**
- * @swagger
- * /users/{id}:
- *   put:
- *     summary: Update user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
 router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN), userController.updateUser);
-
-/**
- * @swagger
- * /users/{id}:
- *   delete:
- *     summary: Delete user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
 router.delete('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN), userController.deleteUser);
+
+// Customer mobile app profile routes
+router.get('/profile', verifyCustomer, customerAuthController.getProfile);
+router.put('/profile', verifyCustomer, customerAuthController.updateProfile);
+router.put('/password', verifyCustomer, customerAuthController.updatePassword);
+
+// Loyalty
+router.get('/loyalty', verifyCustomer, customerAuthController.getLoyalty);
+router.post('/loyalty/checkout-preview', verifyCustomer, customerAuthController.loyaltyCheckoutPreview);
+
+// Favorites
+router.get('/favorites', verifyCustomer, customerAuthController.getFavorites);
+router.post('/favorites/:productId', verifyCustomer, customerAuthController.addFavorite);
+router.delete('/favorites/:productId', verifyCustomer, customerAuthController.removeFavorite);
+
+// Addresses (set default - other address CRUD is in /api/v2/addresses)
+router.patch('/addresses/:id/set-default', verifyCustomer, customerAuthController.setDefaultAddress);
 
 module.exports = router;

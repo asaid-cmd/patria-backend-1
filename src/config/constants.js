@@ -36,6 +36,7 @@ module.exports = {
   ORDER_TYPE: {
     DINE_IN: 'dine_in',
     TAKEAWAY: 'takeaway',
+    DELIVERY: 'Delivery',
   },
 
   // Order Status
@@ -47,6 +48,16 @@ module.exports = {
     SERVED: 'served',
     COMPLETED: 'completed',
     CANCELLED: 'cancelled',
+  },
+
+  // Delivery Status (driver steps)
+  DELIVERY_STATUS: {
+    PICKING_UP: 'Picking Up',
+    PICKED_UP: 'Picked Up',
+    DELIVERING: 'Delivering',
+    NEAR_CUSTOMER: 'Near Customer',
+    DELIVERED: 'Delivered',
+    FAILED: 'Failed',
   },
 
   // Kitchen Status
@@ -62,6 +73,13 @@ module.exports = {
     CASH: 'cash',
     CARD: 'card',
     MIX: 'mix',
+    ONLINE: 'Online',
+  },
+
+  // Driver Shift Status
+  DRIVER_SHIFT_STATUS: {
+    ACTIVE: 'active',
+    ENDED: 'ended',
   },
 
   // Discount Type

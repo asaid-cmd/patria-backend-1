@@ -95,7 +95,56 @@ router.get('/', verifyToken, reviewController.getReviews);
  *       400:
  *         description: Validation error
  */
+/**
+ * @swagger
+ * /reviews:
+ *   post:
+ *     summary: Submit order review (customer)
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderId, rating]
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *               rating:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *               comment:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Review submitted
+ *       409:
+ *         description: Already reviewed this order
+ */
 router.post('/', verifyCustomer, reviewController.submitCustomerReview);
+
+/**
+ * @swagger
+ * /reviews/order/{orderId}:
+ *   get:
+ *     summary: Get review for a specific order
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Review data (null if not reviewed yet)
+ */
 router.get('/order/:orderId', verifyCustomer, reviewController.getReviewByOrder);
 
 /**

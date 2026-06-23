@@ -43,8 +43,62 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
+/**
+ * @swagger
+ * /offers/active:
+ *   get:
+ *     summary: Get active offers (public — customer mobile app)
+ *     tags: [Offers]
+ *     responses:
+ *       200:
+ *         description: List of currently active promotional offers
+ */
 router.get('/active', offerController.getActiveOffers);
+
+/**
+ * @swagger
+ * /offers/validate:
+ *   post:
+ *     summary: Validate a coupon code
+ *     tags: [Offers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code]
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 example: SAVE20
+ *               orderTotal:
+ *                 type: number
+ *                 example: 300
+ *     responses:
+ *       200:
+ *         description: Coupon valid — returns discount and new total
+ *       400:
+ *         description: Coupon expired or limit reached
+ *       404:
+ *         description: Invalid coupon code
+ */
 router.post('/validate', verifyToken, offerController.validateCoupon);
+
+/**
+ * @swagger
+ * /offers:
+ *   get:
+ *     summary: Get all offers (Dashboard)
+ *     tags: [Offers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Paginated offers list
+ */
 router.get('/', verifyToken, offerController.getOffers);
 
 /**

@@ -59,8 +59,48 @@ const verifyCustomer = (req, res, next) => {
  *       401:
  *         description: Unauthorized
  */
-// Customer mobile app order routes
+/**
+ * @swagger
+ * /orders/my-orders:
+ *   get:
+ *     summary: Get customer's own orders
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Paginated customer orders
+ */
 router.get('/my-orders', verifyCustomer, orderController.getMyOrders);
+
+/**
+ * @swagger
+ * /orders/reorder/{id}:
+ *   post:
+ *     summary: Repeat a previous order
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Original order ID
+ *     responses:
+ *       201:
+ *         description: New order created from previous order
+ */
 router.post('/reorder/:id', verifyCustomer, orderController.reorder);
 
 // Dashboard order routes

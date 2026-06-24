@@ -4,8 +4,20 @@ const { validators, validate } = require('../utils/validators');
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find({ isActive: true }).sort({ order: 1 });
-    sendSuccess(res, { categories });
+    const Product = require('../models/Product');
+
+    const categories = await Category.find({ isActive: true }).sort({ order: 1 }).lean();
+
+    // Add productsCount to each category (matches ERB response shape)
+    const withCount = await Promise.all(
+      categories.map(async (cat) => ({
+        ...cat,
+        productsCount: await Product.countDocuments({ category: cat._id, isActive: true }),
+      }))
+    );
+
+    // ERB returns a direct array (no wrapper object)
+    res.json(withCount);
   } catch (error) {
     sendError(res, error.message, 500, error);
   }

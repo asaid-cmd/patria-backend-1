@@ -10,28 +10,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Trigger deploy via HTTP webhook
+        run: |
+          echo "🚀 Calling deploy hook on server..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            "http://${{ secrets.SERVER_HOST }}:5000/api/deploy-hook?secret=${{ secrets.DEPLOY_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30 \
+            --retry 3 \
+            --retry-delay 5)
+
+          echo "HTTP status: $RESPONSE"
+
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Deploy hook triggered successfully"
+          else
+            echo "❌ Deploy hook returned status $RESPONSE — falling back to SSH..."
+            exit 1
+          fi
+
+  deploy-ssh-fallback:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: failure()
+
+    steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Show Runner IP (for firewall whitelist debugging)
+      - name: Show Runner IP
         run: |
           echo "GitHub Actions runner IP:"
           curl -s https://api.ipify.org
-          echo ""
 
-      - name: Wait for SSH to be available
-        run: |
-          echo "Testing TCP connectivity to ${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PORT || '22' }}..."
-          for i in 1 2 3; do
-            if nc -zw 10 ${{ secrets.SERVER_HOST }} ${{ secrets.SERVER_PORT || 22 }}; then
-              echo "✅ SSH port is reachable"
-              break
-            fi
-            echo "⚠️  Attempt $i failed — retrying in 10s..."
-            sleep 10
-          done
-
-      - name: Deploy to VPS via SSH
+      - name: Deploy to VPS via SSH (fallback)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -42,16 +55,9 @@ jobs:
           command_timeout: 20m
           script: |
             set -e
-
-            echo "📂 Navigating to project directory..."
             cd /var/www/patria-backend-1
-
-            echo "⬇️  Pulling latest changes..."
             git pull origin main
-
-            echo "🐳 Rebuilding Docker containers..."
             docker compose down
             docker compose up -d --build
-
-            echo "✅ Deploy complete!"
+            echo "✅ SSH fallback deploy complete!"
             docker compose ps

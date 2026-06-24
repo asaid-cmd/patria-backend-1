@@ -46,6 +46,39 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Deploy webhook — called by GitHub Actions instead of SSH
+app.post('/api/deploy-hook', (req, res) => {
+  const secret = req.query.secret || req.body?.secret;
+  const expected = process.env.DEPLOY_SECRET || 'patria-deploy-2026';
+  if (!secret || secret !== expected) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  res.json({ message: 'Deploy started', timestamp: new Date().toISOString() });
+
+  const { exec } = require('child_process');
+  const token = process.env.GITHUB_TOKEN;
+  const remote = token
+    ? `https://${token}@github.com/asaid-cmd/patria-backend-1.git`
+    : null;
+
+  const gitCmd = remote
+    ? `git -C /app remote set-url origin "${remote}" && git -C /app pull origin main`
+    : `git -C /app pull origin main`;
+
+  exec(gitCmd, (err, stdout, stderr) => {
+    if (err) {
+      console.error('[deploy-hook] git pull failed:', stderr || err.message);
+    } else {
+      console.log('[deploy-hook] git pull success:', stdout.trim());
+      setTimeout(() => {
+        console.log('[deploy-hook] restarting process to load new code...');
+        process.exit(0);
+      }, 1500);
+    }
+  });
+});
+
 app.use('/api', routes);
 app.use('/api/v2', v2Routes);
 app.use('/api/seed', require('./routes/seed.routes'));

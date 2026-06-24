@@ -31,6 +31,11 @@ services:
       CORS_ORIGIN: http://localhost:3000,http://localhost:5173
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX_REQUESTS: 100
+      DEPLOY_SECRET: ${DEPLOY_SECRET:-patria-deploy-2026}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      - .:/app
+      - /app/node_modules
     depends_on:
       - mongodb
     networks:

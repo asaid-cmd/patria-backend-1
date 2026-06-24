@@ -1,5 +1,8 @@
 FROM node:18-alpine
 
+# Install git (needed for deploy hook)
+RUN apk add --no-cache git
+
 WORKDIR /app
 
 # Copy package files

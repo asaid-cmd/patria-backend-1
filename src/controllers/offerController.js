@@ -73,6 +73,7 @@ exports.deleteOffer = async (req, res) => {
   }
 };
 
+// Mobile: returns bare array (ERB shape)
 exports.getActiveOffers = async (req, res) => {
   try {
     const now = new Date();
@@ -81,47 +82,56 @@ exports.getActiveOffers = async (req, res) => {
       startDate: { $lte: now },
       endDate: { $gte: now },
     }).populate('productIds').sort({ createdAt: -1 });
-    sendSuccess(res, { offers });
+    res.json(offers);
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
+// Mobile: returns { discount, message } (ERB shape)
 exports.validateCoupon = async (req, res) => {
   try {
-    const { code, orderTotal } = req.body;
-    if (!code) return sendError(res, 'code is required', 400);
+    const { code, orderTotal, subtotal } = req.body;
+    if (!code) return res.status(400).json({ message: 'كود الخصم مطلوب' });
 
-    const Coupon = require('../models/Coupon');
-    const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
-    if (!coupon) return sendError(res, 'Invalid or expired coupon', 404);
+    const total = orderTotal || subtotal || 0;
 
-    const now = new Date();
-    if (coupon.expiryDate && coupon.expiryDate < now) {
-      return sendError(res, 'Coupon has expired', 400);
-    }
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-      return sendError(res, 'Coupon usage limit reached', 400);
-    }
-
-    let discount = 0;
-    if (coupon.discountType === 'percentage') {
-      discount = ((orderTotal || 0) * coupon.discountValue) / 100;
-    } else {
-      discount = coupon.discountValue;
-    }
-
-    sendSuccess(res, {
-      valid: true,
-      coupon: {
-        code: coupon.code,
-        discountType: coupon.discountType,
-        discountValue: coupon.discountValue,
-      },
-      discount: Math.round(discount * 100) / 100,
-      newTotal: Math.max(0, (orderTotal || 0) - discount),
+    // Try Offer model first (supports both code and couponCode fields)
+    const Offer  = require('../models/Offer');
+    const now    = new Date();
+    const offer  = await Offer.findOne({
+      $or: [{ code }, { couponCode: code }],
+      status: 'active',
+      startDate: { $lte: now },
+      endDate:   { $gte: now },
     });
+
+    if (!offer) {
+      // Fallback: Coupon model
+      const Coupon = require('../models/Coupon');
+      const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
+      if (!coupon) return res.status(404).json({ message: 'كود الخصم غير صالح أو منتهي الصلاحية' });
+      if (coupon.expiryDate && coupon.expiryDate < now) {
+        return res.status(400).json({ message: 'كود الخصم منتهي الصلاحية' });
+      }
+      const discount = coupon.discountType === 'percentage'
+        ? Math.round((total * coupon.discountValue / 100) * 100) / 100
+        : coupon.discountValue;
+      return res.json({ discount, message: 'تم تطبيق الخصم بنجاح' });
+    }
+
+    const maxUses   = offer.maxUses || offer.usageLimit || 0;
+    const usedCount = offer.usedCount || offer.usageCount || 0;
+    if (maxUses > 0 && usedCount >= maxUses) {
+      return res.status(400).json({ message: 'تم استنفاذ عدد مرات استخدام الكود' });
+    }
+
+    const discount = offer.discountType === 'percentage'
+      ? Math.round((total * offer.discountValue / 100) * 100) / 100
+      : Math.min(offer.discountValue || 0, total);
+
+    res.json({ discount, message: 'تم تطبيق الخصم بنجاح' });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };

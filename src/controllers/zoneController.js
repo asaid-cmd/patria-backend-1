@@ -1,12 +1,13 @@
 const Zone = require('../models/Zone');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 
+// Mobile: returns bare array (ERB shape)
 exports.getZones = async (req, res) => {
   try {
     const zones = await Zone.find({ isActive: true }).sort({ name: 1 });
-    sendSuccess(res, { zones });
+    res.json(zones);
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 

@@ -292,6 +292,10 @@ exports.getProfile = async (req, res) => {
       .populate('favorites', 'name price images isActive');
     if (!customer) return res.status(404).json({ message: 'المستخدم غير موجود' });
 
+    // Flat `address` string = label of first default address (ERB compat)
+    const defaultAddr = (customer.addresses || []).find(a => a.isDefault) || customer.addresses?.[0];
+    const addressStr  = defaultAddr?.address || defaultAddr?.label || '';
+
     res.json({
       _id:             customer._id,
       name:            customer.name,
@@ -301,8 +305,10 @@ exports.getProfile = async (req, res) => {
       isPhoneVerified: customer.phoneVerified || false,
       loyaltyPoints:   customer.loyaltyPoints || 0,
       tier:            customer.tier || 'Bronze',
+      address:         addressStr,
       addresses:       customer.addresses || [],
       favorites:       customer.favorites || [],
+      isSubscriber:    false,
       orderCount:      customer.orderCount || 0,
       lifetimeValue:   customer.lifetimeValue || 0,
       lastOrderDate:   customer.lastOrderDate || null,

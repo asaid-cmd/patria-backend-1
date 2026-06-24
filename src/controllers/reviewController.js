@@ -103,35 +103,46 @@ exports.deleteReview = async (req, res) => {
   }
 };
 
+// Mobile: returns { review, isReviewed } (ERB shape)
 exports.getReviewByOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const review = await Review.findOne({ orderId });
-    sendSuccess(res, { review: review || null });
+    res.json({ review: review || null, isReviewed: !!review });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
+// Mobile: accepts both `order` and `orderId`, plus `tags` field
 exports.submitCustomerReview = async (req, res) => {
   try {
-    const { orderId, rating, comment } = req.body;
+    // ERB sends `order` field; fallback to `orderId`
+    const orderId  = req.body.order || req.body.orderId;
+    const { rating, comment, tags } = req.body;
+
+    if (!orderId) return res.status(400).json({ message: 'orderId مطلوب' });
     if (!rating || rating < 1 || rating > 5) {
-      return sendError(res, 'Rating must be between 1 and 5', 400);
+      return res.status(400).json({ message: 'التقييم يجب أن يكون بين 1 و 5' });
     }
 
     const existing = await Review.findOne({ orderId, customerId: req.user.id });
-    if (existing) return sendError(res, 'You already reviewed this order', 409);
+    if (existing) return res.status(409).json({ message: 'لقد قيّمت هذا الطلب مسبقًا' });
 
     const review = await Review.create({
       customerId: req.user.id,
       orderId,
       rating,
       comment,
+      categories: tags || [],
     });
 
-    sendSuccess(res, { review }, 'Review submitted', 201);
+    // Mark order as reviewed
+    const Order = require('../models/Order');
+    await Order.findByIdAndUpdate(orderId, { isReviewed: true, rating, reviewComment: comment });
+
+    res.status(201).json({ review, message: 'شكرًا على تقييمك' });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };

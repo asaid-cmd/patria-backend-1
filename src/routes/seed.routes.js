@@ -26,7 +26,7 @@ router.post('/', async (req, res) => {
       const hash = await bcrypt.hash('password123', 10);
       admin = await User.create({
         name: 'Super Admin', email: 'admin@patria.com',
-        password: hash, role: 'SUPER_ADMIN', isActive: true,
+        password: hash, role: 'superadmin', isActive: true,
       });
       results.push('✅ Admin created: admin@patria.com / password123');
     } else {

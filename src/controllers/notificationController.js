@@ -1,13 +1,18 @@
+/**
+ * Notification Controller
+ * Response format matches ERB exactly — flat JSON, no wrapper.
+ * Device token field is `token` (not `fcmToken`) to match ERB.
+ */
+
 const UserNotification = require('../models/UserNotification');
 const Customer         = require('../models/Customer');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
-const { getPaginationParams }    = require('../utils/pagination');
 
 /* ── Dashboard: legacy notification list ────────────────────────────── */
 exports.getNotifications = async (req, res) => {
   try {
-    const Notification = require('../models/Notification');
-    const notifications = await Notification.find().sort({ createdAt: -1 }).limit(100);
+    const Notification   = require('../models/Notification');
+    const notifications  = await Notification.find().sort({ createdAt: -1 }).limit(100);
     sendSuccess(res, { notifications });
   } catch (error) {
     sendError(res, error.message, 500, error);
@@ -28,32 +33,35 @@ exports.markAsRead = async (req, res) => {
 };
 
 /* ── Mobile: FCM device token management ────────────────────────────── */
+// ERB uses field name `token` (not `fcmToken`)
 exports.registerDeviceToken = async (req, res) => {
   try {
-    const { fcmToken } = req.body;
-    if (!fcmToken) return sendError(res, 'fcmToken is required', 400);
-    await Customer.findByIdAndUpdate(req.user.id, { $addToSet: { fcmTokens: fcmToken } });
-    sendSuccess(res, null, 'Device token registered');
+    const token = req.body.token || req.body.fcmToken;
+    if (!token) return res.status(400).json({ message: 'token مطلوب' });
+    await Customer.findByIdAndUpdate(req.user.id, { $addToSet: { fcmTokens: token } });
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.unregisterDeviceToken = async (req, res) => {
   try {
-    const { fcmToken } = req.body;
-    if (!fcmToken) return sendError(res, 'fcmToken is required', 400);
-    await Customer.findByIdAndUpdate(req.user.id, { $pull: { fcmTokens: fcmToken } });
-    sendSuccess(res, null, 'Device token removed');
+    const token = req.body.token || req.body.fcmToken;
+    if (!token) return res.status(400).json({ message: 'token مطلوب' });
+    await Customer.findByIdAndUpdate(req.user.id, { $pull: { fcmTokens: token } });
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 /* ── Mobile: customer notifications inbox ───────────────────────────── */
 exports.getCustomerNotifications = async (req, res) => {
   try {
-    const { skip, limit, page } = getPaginationParams(req.query);
+    const limit  = parseInt(req.query.limit) || 20;
+    const page   = parseInt(req.query.page)  || 1;
+    const skip   = (page - 1) * limit;
     const filter = { customerId: req.user.id };
 
     const [notifications, unreadCount, total] = await Promise.all([
@@ -62,15 +70,9 @@ exports.getCustomerNotifications = async (req, res) => {
       UserNotification.countDocuments(filter),
     ]);
 
-    sendSuccess(res, {
-      notifications,
-      unreadCount,
-      total,
-      page,
-      pages: Math.ceil(total / limit),
-    });
+    res.json({ notifications, unreadCount, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -80,9 +82,9 @@ exports.getUnreadCount = async (req, res) => {
       customerId: req.user.id,
       read: false,
     });
-    sendSuccess(res, { unreadCount });
+    res.json({ unreadCount });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -92,9 +94,9 @@ exports.markAllRead = async (req, res) => {
       { customerId: req.user.id, read: false },
       { read: true }
     );
-    sendSuccess(res, null, 'All notifications marked as read');
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -105,9 +107,9 @@ exports.markOneRead = async (req, res) => {
       { read: true },
       { new: true }
     );
-    if (!notification) return sendError(res, 'Notification not found', 404);
-    sendSuccess(res, { notification });
+    if (!notification) return res.status(404).json({ message: 'الإشعار غير موجود' });
+    res.json({ ok: true, notification });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };

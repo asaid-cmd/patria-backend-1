@@ -1,30 +1,36 @@
-const jwt = require('jsonwebtoken');
+/**
+ * Auth middleware
+ * Errors return ERB-compatible flat JSON: { message: "..." }
+ * Supports both JWT_ACCESS_SECRET (Patria) and JWT_SECRET (ERB legacy) env vars.
+ */
+
+const jwt          = require('jsonwebtoken');
 const { sendError } = require('../utils/apiResponse');
+
+const JWT_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 
 const verifyToken = (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'غير مصرح — لا يوجد رمز مصادقة' });
 
-    if (!token) {
-      return sendError(res, 'No token provided', 401);
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
-    sendError(res, 'Invalid or expired token', 401, error);
+    res.status(401).json({ message: 'رمز المصادقة غير صالح أو منتهي الصلاحية' });
   }
 };
 
 const authorize = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user) {
-      return sendError(res, 'Unauthorized', 401);
-    }
+    if (!req.user) return res.status(401).json({ message: 'غير مصرح' });
 
-    if (!allowedRoles.includes(req.user.role)) {
-      return sendError(res, 'Forbidden: Insufficient permissions', 403);
+    // Mobile customer tokens carry no `role` → treat as 'user'
+    const role = req.user.role || 'user';
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({ message: 'ممنوع — صلاحيات غير كافية' });
     }
 
     next();

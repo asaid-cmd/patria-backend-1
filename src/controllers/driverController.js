@@ -1,55 +1,86 @@
+/**
+ * Driver Mobile Controller
+ * Response format matches ERB exactly — flat JSON, no wrapper.
+ * Device token field is `token` (not `fcmToken`) to match ERB.
+ */
+
 const jwt    = require('jsonwebtoken');
 const Driver = require('../models/Driver');
 const Order  = require('../models/Order');
 const DriverShift        = require('../models/DriverShift');
 const DriverNotification = require('../models/DriverNotification');
 const Customer           = require('../models/Customer');
-const { sendSuccess, sendError } = require('../utils/apiResponse');
-const { notifyUser }             = require('../utils/notifyUser');
-const { notifyDriver }           = require('../utils/notifyDriver');
-const loyalty                    = require('../utils/loyaltyConfig');
+const { notifyUser }     = require('../utils/notifyUser');
+const loyalty            = require('../utils/loyaltyConfig');
 
 const generateDriverToken = (driverId) =>
-  jwt.sign({ id: driverId, role: 'driver' }, process.env.JWT_ACCESS_SECRET, { expiresIn: '24h' });
+  jwt.sign(
+    { id: driverId, role: 'driver' },
+    process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,
+    { expiresIn: '30d' }
+  );
 
 function getIo(req) { return req.app.get('io') || null; }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ── Driver shape matching ERB ─────────────────────────────── */
+function driverShape(d, extras = {}) {
+  return {
+    _id:               d._id,
+    name:              d.name,
+    phone:             d.phone,
+    vehicleType:       d.vehicleType,
+    status:            d.status,
+    assignedZone:      d.assignedZone || null,
+    performanceRating: d.performanceRating || 0,
+    isOnShift:         d.isOnShift || false,
+    shiftStartedAt:    d.shiftStartedAt || null,
+    location:          d.location || null,
+    ...extras,
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
    AUTH
-══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 exports.login = async (req, res) => {
   try {
-    const { phone, password, fcmToken } = req.body;
-    if (!phone || !password) return sendError(res, 'phone and password are required', 400);
+    const { phone, password, fcmToken, token: tokenField } = req.body;
+    if (!phone || !password) return res.status(400).json({ message: 'رقم الهاتف وكلمة المرور مطلوبان' });
 
-    const driver = await Driver.findOne({ $or: [{ phone }, { whatsappPhone: phone }], isActive: true });
-    if (!driver) return sendError(res, 'Invalid credentials', 401);
+    const driver = await Driver.findOne({
+      $or: [{ phone }, { whatsappPhone: phone }],
+      isActive: true,
+    });
+    if (!driver) return res.status(401).json({ message: 'بيانات الدخول غير صحيحة' });
     if (!driver.password) {
-      return sendError(res, 'Account not set up for mobile login. Contact admin to set password.', 401);
+      return res.status(401).json({ message: 'لم يتم ضبط كلمة المرور. تواصل مع المسؤول.' });
     }
 
     const valid = await driver.comparePassword(password);
-    if (!valid) return sendError(res, 'Invalid credentials', 401);
+    if (!valid) return res.status(401).json({ message: 'بيانات الدخول غير صحيحة' });
 
-    // Register FCM token on login
-    if (fcmToken) {
-      await Driver.findByIdAndUpdate(driver._id, { $addToSet: { fcmTokens: fcmToken } });
+    // Accept `token` OR `fcmToken` field (ERB uses `token`)
+    const fcm = tokenField || fcmToken;
+    if (fcm) {
+      await Driver.findByIdAndUpdate(driver._id, { $addToSet: { fcmTokens: fcm } });
     }
 
-    const token = generateDriverToken(driver._id);
-    sendSuccess(res, { driver: driver.toJSON(), token }, 'Login successful');
+    res.json({
+      ...driverShape(driver),
+      token: generateDriverToken(driver._id),
+    });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════
    PROFILE
-══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 exports.getProfile = async (req, res) => {
   try {
     const driver = await Driver.findById(req.user.id);
-    if (!driver) return sendError(res, 'Driver not found', 404);
+    if (!driver) return res.status(404).json({ message: 'المندوب غير موجود' });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -59,24 +90,23 @@ exports.getProfile = async (req, res) => {
       updatedAt: { $gte: today },
     });
 
-    // Shift elapsed seconds
     let shiftSeconds = 0;
     if (driver.isOnShift && driver.shiftStartedAt) {
       shiftSeconds = Math.floor((Date.now() - new Date(driver.shiftStartedAt).getTime()) / 1000);
     }
 
-    sendSuccess(res, {
-      driver: driver.toJSON(),
+    res.json({
+      ...driverShape(driver),
       shiftStats: {
         isOnShift:            driver.isOnShift,
         shiftStartedAt:       driver.shiftStartedAt,
         shiftSeconds,
         todayDeliveries,
-        shiftDeliveriesCount: driver.shiftDeliveriesCount,
+        shiftDeliveriesCount: driver.shiftDeliveriesCount || 0,
       },
     });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -86,124 +116,102 @@ exports.updateProfile = async (req, res) => {
     const driver = await Driver.findByIdAndUpdate(
       req.user.id, { name, phone }, { new: true, runValidators: true }
     );
-    sendSuccess(res, { driver: driver.toJSON() }, 'Profile updated');
+    res.json(driverShape(driver));
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.deleteAccount = async (req, res) => {
   try {
     await Driver.findByIdAndUpdate(req.user.id, { isActive: false });
-    sendSuccess(res, null, 'Account deleted');
+    res.json({ message: 'تم حذف الحساب' });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════
    SHIFT
-══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 exports.startShift = async (req, res) => {
   try {
     const driver = await Driver.findById(req.user.id);
-    if (!driver)        return sendError(res, 'Driver not found', 404);
-    if (driver.isOnShift) return sendError(res, 'Shift already started', 400);
+    if (!driver)          return res.status(404).json({ message: 'المندوب غير موجود' });
+    if (driver.isOnShift) return res.status(400).json({ message: 'الشيفت مفتوح بالفعل' });
 
     const now = new Date();
-
     await Driver.findByIdAndUpdate(req.user.id, {
-      isOnShift: true,
-      shiftStartedAt: now,
-      shiftDeliveriesCount: 0,
-      status: 'active',
+      isOnShift: true, shiftStartedAt: now, shiftDeliveriesCount: 0, status: 'active',
     });
 
-    // Create DriverShift record
     const shift = await DriverShift.create({
-      driverId:   req.user.id,
-      startedAt:  now,
+      driverId:  req.user.id,
+      startedAt: now,
       hourlyRate: driver.hourlyRate || 0,
-      status:     'active',
+      status:    'active',
     });
 
-    sendSuccess(res, { shift }, 'Shift started');
+    res.json(shift.toObject());
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.endShift = async (req, res) => {
   try {
     const driver = await Driver.findById(req.user.id);
-    if (!driver)          return sendError(res, 'Driver not found', 404);
-    if (!driver.isOnShift) return sendError(res, 'No active shift', 400);
+    if (!driver)           return res.status(404).json({ message: 'المندوب غير موجود' });
+    if (!driver.isOnShift) return res.status(400).json({ message: 'لا يوجد شيفت مفتوح' });
 
-    const now        = new Date();
-    const startedAt  = new Date(driver.shiftStartedAt);
+    const now         = new Date();
+    const startedAt   = new Date(driver.shiftStartedAt);
     const hoursWorked = parseFloat(((now - startedAt) / 3600000).toFixed(2));
     const hourlyRate  = driver.hourlyRate || 0;
     const totalSalary = parseFloat((hoursWorked * hourlyRate).toFixed(2));
 
-    // Close the open DriverShift record
     await DriverShift.findOneAndUpdate(
       { driverId: req.user.id, status: 'active' },
-      {
-        endedAt:         now,
-        hoursWorked,
-        ordersCompleted: driver.shiftDeliveriesCount,
-        totalSalary,
-        status:          'completed',
-      }
+      { endedAt: now, hoursWorked, ordersCompleted: driver.shiftDeliveriesCount || 0, totalSalary, status: 'completed' }
     );
 
     await Driver.findByIdAndUpdate(req.user.id, {
-      isOnShift:      false,
-      shiftStartedAt: null,
-      status:         'offline',
+      isOnShift: false, shiftStartedAt: null, status: 'offline',
     });
 
-    sendSuccess(res, {
-      deliveriesCompleted: driver.shiftDeliveriesCount,
+    res.json({
+      deliveriesCompleted: driver.shiftDeliveriesCount || 0,
       hoursWorked,
       totalSalary,
-    }, 'Shift ended');
+    });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.requestOvertime = async (req, res) => {
   try {
     const driver = await Driver.findById(req.user.id);
-    if (!driver)          return sendError(res, 'Driver not found', 404);
-    if (!driver.isOnShift) return sendError(res, 'No active shift', 400);
+    if (!driver)           return res.status(404).json({ message: 'المندوب غير موجود' });
+    if (!driver.isOnShift) return res.status(400).json({ message: 'لا يوجد شيفت مفتوح' });
 
-    // Mark overtime request on active DriverShift
     await DriverShift.findOneAndUpdate(
       { driverId: req.user.id, status: 'active' },
       { overtimeRequested: true }
     );
 
-    // Notify manager via socket
     const io = getIo(req);
-    if (io) {
-      io.emit('driver_overtime_request', {
-        driverId: req.user.id,
-        name:     driver.name,
-        phone:    driver.phone,
-      });
-    }
+    if (io) io.emit('driver_overtime_request', { driverId: req.user.id, name: driver.name, phone: driver.phone });
 
-    sendSuccess(res, null, 'Overtime request submitted');
+    res.json({ message: 'تم إرسال طلب الوقت الإضافي' });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════
    ORDERS
-══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 exports.getMyOrders = async (req, res) => {
   try {
     const since  = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -212,12 +220,12 @@ exports.getMyOrders = async (req, res) => {
       updatedAt: { $gte: since },
     }).sort({ createdAt: -1 });
 
-    const active  = orders.filter(o => !['Delivered', 'Failed'].includes(o.deliveryStatus));
-    const history = orders.filter(o => ['Delivered', 'Failed'].includes(o.deliveryStatus));
-
-    sendSuccess(res, { active, history });
+    res.json({
+      active:  orders.filter(o => !['Delivered', 'Failed'].includes(o.deliveryStatus)),
+      history: orders.filter(o => ['Delivered', 'Failed'].includes(o.deliveryStatus)),
+    });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -230,57 +238,48 @@ exports.getTodayOrders = async (req, res) => {
       createdAt: { $gte: today },
     }).sort({ createdAt: -1 });
 
-    sendSuccess(res, {
+    res.json({
       inProgress: orders.filter(o => !['Delivered', 'Failed'].includes(o.deliveryStatus)),
       delivered:  orders.filter(o => o.deliveryStatus === 'Delivered'),
     });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.updateOrderStatus = async (req, res) => {
   try {
-    const { orderId }       = req.params;
+    const { orderId }        = req.params;
     const { deliveryStatus } = req.body;
 
     const valid = ['Picking Up', 'Picked Up', 'Delivering', 'Near Customer', 'Delivered', 'Failed'];
     if (!valid.includes(deliveryStatus)) {
-      return sendError(res, `Invalid status. Valid: ${valid.join(', ')}`, 400);
+      return res.status(400).json({ message: `الحالة غير صحيحة. الحالات المتاحة: ${valid.join(', ')}` });
     }
 
     const order = await Order.findOne({ _id: orderId, assignedDriver: req.user.id });
-    if (!order) return sendError(res, 'Order not found', 404);
+    if (!order) return res.status(404).json({ message: 'الطلب غير موجود' });
 
     order.deliveryStatus = deliveryStatus;
 
     if (deliveryStatus === 'Delivered') {
       order.status = 'completed';
-      await Driver.findByIdAndUpdate(req.user.id, {
-        $inc: { shiftDeliveriesCount: 1 },
-        status: 'active',
-      });
-      // Update DriverShift ordersCompleted
+      await Driver.findByIdAndUpdate(req.user.id, { $inc: { shiftDeliveriesCount: 1 }, status: 'active' });
       await DriverShift.findOneAndUpdate(
         { driverId: req.user.id, status: 'active' },
         { $inc: { ordersCompleted: 1 } }
       );
-      // Award loyalty points to customer
-      if (order.customerId) {
-        _awardLoyalty(order).catch(() => {});
-      }
+      if (order.customerId) _awardLoyalty(order).catch(() => {});
     }
 
     await order.save();
 
-    // ── Socket broadcast ─────────────────────────────────────────────
     const io = getIo(req);
     if (io) {
       io.emit(`orderStatusUpdated_${order._id}`, order);
       io.emit('orderStatusUpdated', order);
     }
 
-    // ── Push notification to customer ────────────────────────────────
     const typeMap = {
       'Picking Up':    'delivery_picking',
       'Picked Up':     'delivery_picked',
@@ -290,12 +289,12 @@ exports.updateOrderStatus = async (req, res) => {
       'Failed':        'delivery_failed',
     };
     const msgs = {
-      'Picking Up':    { title: 'طلبك قيد الاستلام 🛵',     body: `المندوب في طريقه لاستلام طلبك` },
-      'Picked Up':     { title: 'طلبك في الطريق 🛵',         body: `طلبك استُلم وهو في الطريق إليك` },
-      'Delivering':    { title: 'طلبك في الطريق إليك 📍',    body: `المندوب في طريقه لتوصيل طلبك` },
-      'Near Customer': { title: 'المندوب قريب منك 📍',        body: `طلبك سيصل خلال دقائق` },
-      'Delivered':     { title: 'تم تسليم طلبك ☕',           body: `طلبك وصل. استمتع!` },
-      'Failed':        { title: 'تعذّر التسليم ⚠️',           body: `تعذّر تسليم طلبك، سيتواصل معك فريقنا` },
+      'Picking Up':    { title: 'طلبك قيد الاستلام 🛵',    body: 'المندوب في طريقه لاستلام طلبك' },
+      'Picked Up':     { title: 'طلبك في الطريق 🛵',        body: 'طلبك استُلم وهو في الطريق إليك' },
+      'Delivering':    { title: 'طلبك في الطريق إليك 📍',   body: 'المندوب في طريقه لتوصيل طلبك' },
+      'Near Customer': { title: 'المندوب قريب منك 📍',       body: 'طلبك سيصل خلال دقائق' },
+      'Delivered':     { title: 'تم تسليم طلبك ☕',          body: 'طلبك وصل. استمتع!' },
+      'Failed':        { title: 'تعذّر التسليم ⚠️',          body: 'تعذّر تسليم طلبك، سيتواصل معك فريقنا' },
     };
     const msg = msgs[deliveryStatus];
     if (msg && order.customerId) {
@@ -309,27 +308,26 @@ exports.updateOrderStatus = async (req, res) => {
       }).catch(() => {});
     }
 
-    sendSuccess(res, { order }, 'Order status updated');
+    res.json(order.toObject());
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════
    LOCATION
-══════════════════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 exports.updateLocation = async (req, res) => {
   try {
     const { lat, lng, accuracy } = req.body;
     if (lat === undefined || lng === undefined) {
-      return sendError(res, 'lat and lng are required', 400);
+      return res.status(400).json({ message: 'lat و lng مطلوبان' });
     }
 
     await Driver.findByIdAndUpdate(req.user.id, {
       location: { lat, lng, accuracy, updatedAt: new Date() },
     });
 
-    // Update active order's driverLocation
     const activeOrder = await Order.findOneAndUpdate(
       {
         assignedDriver: req.user.id,
@@ -339,49 +337,46 @@ exports.updateLocation = async (req, res) => {
       { new: true }
     );
 
-    // Broadcast live location to dashboard + customer tracking screen
     const io = getIo(req);
     if (io) {
       io.emit('driverLocationUpdated', { driverId: req.user.id, lat, lng });
-      if (activeOrder) {
-        io.emit(`driverLocationUpdated_${activeOrder._id}`, { lat, lng });
-      }
+      if (activeOrder) io.emit(`driverLocationUpdated_${activeOrder._id}`, { lat, lng });
     }
 
-    sendSuccess(res, null, 'Location updated');
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ══════════════════════════════════════════════════════════════════════
-   FCM TOKENS
-══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   FCM TOKENS  (ERB field name: `token`, not `fcmToken`)
+══════════════════════════════════════════════════════════ */
 exports.registerFcmToken = async (req, res) => {
   try {
-    const { fcmToken } = req.body;
-    if (!fcmToken) return sendError(res, 'fcmToken is required', 400);
-    await Driver.findByIdAndUpdate(req.user.id, { $addToSet: { fcmTokens: fcmToken } });
-    sendSuccess(res, null, 'FCM token registered');
+    const fcm = req.body.token || req.body.fcmToken;
+    if (!fcm) return res.status(400).json({ message: 'token مطلوب' });
+    await Driver.findByIdAndUpdate(req.user.id, { $addToSet: { fcmTokens: fcm } });
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.unregisterFcmToken = async (req, res) => {
   try {
-    const { fcmToken } = req.body;
-    if (!fcmToken) return sendError(res, 'fcmToken is required', 400);
-    await Driver.findByIdAndUpdate(req.user.id, { $pull: { fcmTokens: fcmToken } });
-    sendSuccess(res, null, 'FCM token removed');
+    const fcm = req.body.token || req.body.fcmToken;
+    if (!fcm) return res.status(400).json({ message: 'token مطلوب' });
+    await Driver.findByIdAndUpdate(req.user.id, { $pull: { fcmTokens: fcm } });
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ══════════════════════════════════════════════════════════════════════
-   NOTIFICATIONS  (separate collection — not embedded)
-══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   NOTIFICATIONS
+══════════════════════════════════════════════════════════ */
 exports.getNotifications = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
@@ -390,48 +385,46 @@ exports.getNotifications = async (req, res) => {
 
     const [notifications, unreadCount, total] = await Promise.all([
       DriverNotification.find({ driverId: req.user.id })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
+        .sort({ createdAt: -1 }).skip(skip).limit(limit),
       DriverNotification.countDocuments({ driverId: req.user.id, read: false }),
       DriverNotification.countDocuments({ driverId: req.user.id }),
     ]);
 
-    sendSuccess(res, { notifications, unreadCount, total, page, pages: Math.ceil(total / limit) });
+    res.json({ notifications, unreadCount, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.markAllNotificationsRead = async (req, res) => {
   try {
     await DriverNotification.updateMany({ driverId: req.user.id }, { read: true });
-    sendSuccess(res, null, 'All notifications marked as read');
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.markNotificationRead = async (req, res) => {
   try {
-    await DriverNotification.findOneAndUpdate(
+    const notification = await DriverNotification.findOneAndUpdate(
       { _id: req.params.id, driverId: req.user.id },
-      { read: true }
+      { read: true },
+      { new: true }
     );
-    sendSuccess(res, null, 'Notification marked as read');
+    if (!notification) return res.status(404).json({ message: 'الإشعار غير موجود' });
+    res.json({ ok: true, notification });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ══════════════════════════════════════════════════════════════════════
-   Internal helpers
-══════════════════════════════════════════════════════════════════════ */
+/* ── Internal helpers ─────────────────────────────────────── */
 async function _awardLoyalty(order) {
   if (!order.customerId) return;
   const cust = await Customer.findById(order.customerId);
   if (!cust) return;
-  const pts = loyalty.computePointsEarned(order.total || 0);
+  const pts      = loyalty.computePointsEarned(order.total || 0);
   cust.loyaltyPoints = (cust.loyaltyPoints || 0) + pts;
   cust.tier          = loyalty.autoTier(cust.loyaltyPoints);
   await cust.save();

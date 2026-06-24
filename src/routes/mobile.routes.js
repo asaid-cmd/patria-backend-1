@@ -17,7 +17,6 @@
 
 const express = require('express');
 const { verifyToken } = require('../middleware/auth');
-const { sendError } = require('../utils/apiResponse');
 
 const customerAuthController  = require('../controllers/customerAuthController');
 const cartController           = require('../controllers/cartController');
@@ -33,9 +32,13 @@ const categoryController       = require('../controllers/categoryController');
 const router = express.Router();
 
 /* ─── Middleware ─────────────────────────────────────────────────────────── */
+// Customer tokens carry { id } with no role field — just verify the JWT is valid.
+// Drivers carry { id, role: 'driver' } — block them from customer routes.
 const verifyCustomer = (req, res, next) => {
   verifyToken(req, res, () => {
-    if (req.user.role !== 'customer') return sendError(res, 'Customer access required', 403);
+    if (req.user.role === 'driver') {
+      return res.status(403).json({ message: 'هذا المسار مخصص لتطبيق العميل فقط' });
+    }
     next();
   });
 };

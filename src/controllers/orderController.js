@@ -1,18 +1,24 @@
+/**
+ * Order Controller
+ * Dashboard endpoints keep sendSuccess/sendError (dashboard frontend expects it).
+ * Mobile endpoints return ERB-compatible flat JSON.
+ */
+
 const Order    = require('../models/Order');
 const Customer = require('../models/Customer');
 const Offer    = require('../models/Offer');
-const { sendSuccess, sendError }                  = require('../utils/apiResponse');
-const { getPaginationParams, paginatedResult }    = require('../utils/pagination');
-const { validators, validate }                    = require('../utils/validators');
-const loyalty                                     = require('../utils/loyaltyConfig');
-const { notifyUser }                              = require('../utils/notifyUser');
+const { sendSuccess, sendError }               = require('../utils/apiResponse');
+const { getPaginationParams, paginatedResult } = require('../utils/pagination');
+const { validators, validate }                 = require('../utils/validators');
+const loyalty                                  = require('../utils/loyaltyConfig');
+const { notifyUser }                           = require('../utils/notifyUser');
 
-/* ── helpers ─────────────────────────────────────────────────────────── */
-function getIo(req) {
-  return req.app.get('io') || null;
-}
+function getIo(req) { return req.app.get('io') || null; }
 
-/* ── Dashboard: list all orders ──────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD ENDPOINTS  (keep sendSuccess wrapper)
+══════════════════════════════════════════════════════════ */
+
 exports.getOrders = async (req, res) => {
   try {
     const { skip, limit, page } = getPaginationParams(req.query);
@@ -26,7 +32,6 @@ exports.getOrders = async (req, res) => {
   }
 };
 
-/* ── Dashboard: create order (POS / staff) ───────────────────────────── */
 exports.createOrder = async (req, res) => {
   try {
     const { error, value } = validate(validators.createOrderSchema, req.body);
@@ -38,15 +43,7 @@ exports.createOrder = async (req, res) => {
     const tax   = subtotal * 0.14;
     const total = subtotal + tax;
 
-    const order = await Order.create({
-      items,
-      subtotal,
-      tax,
-      total,
-      staffId: req.user.id,
-      ...rest,
-    });
-
+    const order = await Order.create({ items, subtotal, tax, total, staffId: req.user.id, ...rest });
     const io = getIo(req);
     if (io) io.emit('newOrder', order);
 
@@ -56,13 +53,12 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-/* ── Dashboard: update order status ─────────────────────────────────── */
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { id }     = req.params;
     const { status } = req.body;
 
-    const order = await Order.findById(id);
+    const order      = await Order.findById(id);
     if (!order) return sendError(res, 'Order not found', 404);
 
     const prevStatus = order.status;
@@ -75,22 +71,18 @@ exports.updateOrderStatus = async (req, res) => {
       io.emit('orderStatusUpdated', updated);
     }
 
-    // Award loyalty on delivery
     if (prevStatus !== 'completed' && status === 'completed' && order.customerId) {
       _awardLoyalty(order.customerId, order).catch(() => {});
     }
-
-    // Refund redeemed points on cancellation
     if (status === 'cancelled' && prevStatus !== 'cancelled') {
       _refundLoyalty(order).catch(() => {});
     }
 
-    // Push notification to customer
     const notifMap = {
-      confirmed:  { type: 'order_confirmed',  title: 'تم تأكيد طلبك ✅',       body: `طلبك رقم #${order._id.toString().slice(-6)} تم تأكيده` },
-      preparing:  { type: 'order_preparing',  title: 'طلبك قيد التحضير 👨‍🍳',   body: `طلبك رقم #${order._id.toString().slice(-6)} يُحضَّر الآن` },
-      completed:  { type: 'order_delivered',  title: 'تم تسليم طلبك ☕',        body: `طلبك رقم #${order._id.toString().slice(-6)} وصل. استمتع!` },
-      cancelled:  { type: 'order_cancelled',  title: 'تم إلغاء طلبك ❌',        body: `طلبك رقم #${order._id.toString().slice(-6)} تم إلغاؤه` },
+      confirmed: { type: 'order_confirmed', title: 'تم تأكيد طلبك ✅',     body: `طلبك رقم #${order._id.toString().slice(-6)} تم تأكيده` },
+      preparing: { type: 'order_preparing', title: 'طلبك قيد التحضير 👨‍🍳', body: `طلبك رقم #${order._id.toString().slice(-6)} يُحضَّر الآن` },
+      completed: { type: 'order_delivered', title: 'تم تسليم طلبك ☕',      body: `طلبك رقم #${order._id.toString().slice(-6)} وصل. استمتع!` },
+      cancelled: { type: 'order_cancelled', title: 'تم إلغاء طلبك ❌',      body: `طلبك رقم #${order._id.toString().slice(-6)} تم إلغاؤه` },
     };
     const notif = notifMap[status];
     if (notif && order.customerId) {
@@ -110,7 +102,6 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
-/* ── Dashboard: get single order ─────────────────────────────────────── */
 exports.getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -122,7 +113,6 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-/* ── Dashboard: delete order ─────────────────────────────────────────── */
 exports.deleteOrder = async (req, res) => {
   try {
     await Order.findByIdAndDelete(req.params.id);
@@ -132,7 +122,10 @@ exports.deleteOrder = async (req, res) => {
   }
 };
 
-/* ── Mobile: place customer order ────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   MOBILE ENDPOINTS  (ERB flat JSON format)
+══════════════════════════════════════════════════════════ */
+
 exports.placeCustomerOrder = async (req, res) => {
   try {
     const {
@@ -140,17 +133,16 @@ exports.placeCustomerOrder = async (req, res) => {
       payment, notes, couponCode, pointsToRedeem,
     } = req.body;
 
-    if (!items || !items.length) return sendError(res, 'items are required', 400);
+    if (!items || !items.length) return res.status(400).json({ message: 'items مطلوبة' });
 
     const customerId = req.user.id;
     let subtotal     = summary?.subtotal || 0;
     let deliveryFee  = summary?.deliveryFee || 0;
     let discount     = 0;
-    let pointsDiscountAmount = 0;
+    let pointsDiscountAmount    = 0;
     let effectivePointsRedeemed = 0;
 
-    // ── 1. Coupon validation ──────────────────────────────────────────
-    let appliedCoupon = null;
+    // 1. Coupon validation
     if (couponCode) {
       const now   = new Date();
       const offer = await Offer.findOne({
@@ -159,113 +151,108 @@ exports.placeCustomerOrder = async (req, res) => {
         startDate: { $lte: now },
         endDate:   { $gte: now },
       });
+      if (!offer) return res.status(400).json({ message: 'كود الخصم غير صالح أو منتهي الصلاحية' });
 
-      if (!offer) return sendError(res, 'Invalid or expired coupon code', 400);
-
-      const maxUses  = offer.maxUses || offer.usageLimit || 0;
+      const maxUses   = offer.maxUses || offer.usageLimit || 0;
       const usedCount = offer.usedCount || offer.usageCount || 0;
       if (maxUses > 0 && usedCount >= maxUses) {
-        return sendError(res, 'Coupon usage limit reached', 400);
+        return res.status(400).json({ message: 'تم استنفاذ عدد مرات استخدام الكود' });
       }
 
-      if (offer.discountType === 'percentage') {
-        discount = parseFloat(((offer.discountValue / 100) * subtotal).toFixed(2));
-      } else {
-        discount = Math.min(offer.discountValue || 0, subtotal);
-      }
+      discount = offer.discountType === 'percentage'
+        ? parseFloat(((offer.discountValue / 100) * subtotal).toFixed(2))
+        : Math.min(offer.discountValue || 0, subtotal);
 
-      appliedCoupon = offer;
-      // Increment usage count (non-blocking)
       Offer.findByIdAndUpdate(offer._id, { $inc: { usedCount: 1, usageCount: 1 } }).catch(() => {});
     }
 
-    // ── 2. Loyalty points redemption ──────────────────────────────────
+    // 2. Loyalty redemption
     const cust = await Customer.findById(customerId).select('loyaltyPoints fcmTokens');
-    if (!cust) return sendError(res, 'Customer not found', 404);
+    if (!cust) return res.status(404).json({ message: 'العميل غير موجود' });
 
     const redeemPoints = parseInt(pointsToRedeem) || 0;
     if (redeemPoints > 0) {
       if (redeemPoints < loyalty.MIN_REDEEM_POINTS) {
-        return sendError(res, `Minimum ${loyalty.MIN_REDEEM_POINTS} points required to redeem`, 400);
+        return res.status(400).json({ message: `الحد الأدنى للاسترداد ${loyalty.MIN_REDEEM_POINTS} نقطة` });
       }
       if (redeemPoints > (cust.loyaltyPoints || 0)) {
-        return sendError(res, 'Insufficient loyalty points', 400);
+        return res.status(400).json({ message: 'رصيد النقاط غير كافٍ' });
       }
       const maxRedeem = loyalty.maxRedeemablePoints(cust.loyaltyPoints, subtotal - discount);
-      effectivePointsRedeemed   = Math.min(redeemPoints, maxRedeem);
-      pointsDiscountAmount       = loyalty.redeemDiscountEgp(effectivePointsRedeemed);
+      effectivePointsRedeemed = Math.min(redeemPoints, maxRedeem);
+      pointsDiscountAmount    = loyalty.redeemDiscountEgp(effectivePointsRedeemed);
 
-      // Deduct points immediately
       await Customer.findByIdAndUpdate(customerId, {
         $inc: { loyaltyPoints: -effectivePointsRedeemed },
       });
     }
 
-    // ── 3. Final total ────────────────────────────────────────────────
+    // 3. Final total
     const totalDiscount = discount + pointsDiscountAmount;
     const total = Math.max(0, subtotal - totalDiscount + deliveryFee);
 
-    // ── 4. Save order ─────────────────────────────────────────────────
+    // 4. Save order
     const order = await Order.create({
-      type:          orderType || 'Delivery',
+      type:               orderType || 'Delivery',
       customerId,
       customer,
       items,
       subtotal,
       deliveryFee,
-      discount:      totalDiscount,
-      couponCode:    couponCode || null,
-      pointsRedeemed: effectivePointsRedeemed,
+      discount:           totalDiscount,
+      couponCode:         couponCode || null,
+      pointsRedeemed:     effectivePointsRedeemed,
       pointsDiscountAmount,
       total,
-      paymentMethod: payment?.method || 'Cash',
+      paymentMethod:      payment?.method || 'Cash',
       notes,
-      status: 'pending',
+      status:             'pending',
     });
 
-    // ── 5. Socket broadcast ───────────────────────────────────────────
+    // 5. Socket + FCM
     const io = getIo(req);
     if (io) io.emit('newOrder', order);
 
-    // ── 6. FCM push to customer ───────────────────────────────────────
     notifyUser({
       customerId: String(customerId),
       type:       'order_placed',
       title:      'تم استلام طلبك 🛒',
-      body:       `طلبك وصلنا وجاري المراجعة`,
+      body:       'طلبك وصلنا وجاري المراجعة',
       orderId:    String(order._id),
       data:       { screen: 'order_details', orderId: String(order._id) },
     }).catch(() => {});
 
-    // ── 7. Response with estimated points ─────────────────────────────
-    const payload = order.toObject();
-    payload.estimatedPointsEarned = loyalty.computePointsEarned(total);
-
-    sendSuccess(res, { order: payload }, 'Order placed', 201);
+    // 6. Return flat order object (ERB format)
+    const payload                    = order.toObject();
+    payload.estimatedPointsEarned    = loyalty.computePointsEarned(total);
+    res.status(201).json(payload);
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ── Mobile: my orders ───────────────────────────────────────────────── */
 exports.getMyOrders = async (req, res) => {
   try {
-    const { skip, limit, page } = getPaginationParams(req.query);
+    const limit  = parseInt(req.query.limit) || 20;
+    const page   = parseInt(req.query.page)  || 1;
+    const skip   = (page - 1) * limit;
     const filter = { customerId: req.user.id };
-    const orders = await Order.find(filter)
-      .sort({ createdAt: -1 }).skip(skip).limit(limit);
-    const total = await Order.countDocuments(filter);
-    sendSuccess(res, paginatedResult(orders, total, page, limit));
+
+    const [orders, total] = await Promise.all([
+      Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Order.countDocuments(filter),
+    ]);
+
+    res.json({ orders, total, page, pages: Math.ceil(total / limit) });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ── Mobile: reorder ─────────────────────────────────────────────────── */
 exports.reorder = async (req, res) => {
   try {
     const original = await Order.findOne({ _id: req.params.id, customerId: req.user.id });
-    if (!original) return sendError(res, 'Order not found', 404);
+    if (!original) return res.status(404).json({ message: 'الطلب غير موجود' });
 
     const newOrder = await Order.create({
       type:          original.type,
@@ -283,54 +270,50 @@ exports.reorder = async (req, res) => {
     const io = getIo(req);
     if (io) io.emit('newOrder', newOrder);
 
-    sendSuccess(res, { order: newOrder }, 'Reorder placed', 201);
+    res.status(201).json(newOrder.toObject());
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ── Mobile: live order tracking ─────────────────────────────────────── */
 exports.getOrderTracking = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId)
-      .populate('assignedDriver', 'name phone vehicleType location')
-      .select('status deliveryStatus driverLocation customerLocation assignedDriver customer createdAt summary');
-    if (!order) return sendError(res, 'Order not found', 404);
+      .populate('assignedDriver', 'name phone vehicleType location');
+    if (!order) return res.status(404).json({ message: 'الطلب غير موجود' });
 
     const driver = order.assignedDriver;
-    sendSuccess(res, {
-      tracking: {
-        orderId:        String(order._id),
-        status:         order.status,
-        deliveryStatus: order.deliveryStatus,
-        createdAt:      order.createdAt,
-        customer: {
-          name:    order.customer?.name,
-          phone:   order.customer?.phone,
-          address: order.customer?.address,
-        },
-        driver: driver ? {
-          _id:               String(driver._id),
-          name:              driver.name,
-          phone:             driver.phone,
-          lat:               driver.location?.lat,
-          lng:               driver.location?.lng,
-          locationUpdatedAt: driver.location?.updatedAt,
-        } : null,
-        summary: order.summary,
+    res.json({
+      orderId:        String(order._id),
+      status:         order.status,
+      orderType:      order.type,
+      deliveryStatus: order.deliveryStatus,
+      createdAt:      order.createdAt,
+      customer: {
+        name:    order.customer?.name,
+        phone:   order.customer?.phone,
+        address: order.customer?.address,
       },
+      driver: driver ? {
+        _id:               String(driver._id),
+        name:              driver.name,
+        phone:             driver.phone,
+        lat:               driver.location?.lat,
+        lng:               driver.location?.lng,
+        locationUpdatedAt: driver.location?.updatedAt,
+      } : null,
+      summary: order.summary || null,
     });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ── Mobile: save customer GPS pin ───────────────────────────────────── */
 exports.saveCustomerLocation = async (req, res) => {
   try {
     const { lat, lng } = req.body;
     if (lat === undefined || lng === undefined) {
-      return sendError(res, 'lat and lng are required', 400);
+      return res.status(400).json({ message: 'lat و lng مطلوبان' });
     }
 
     const order = await Order.findOneAndUpdate(
@@ -338,34 +321,32 @@ exports.saveCustomerLocation = async (req, res) => {
       { customerLocation: { lat, lng } },
       { new: true }
     );
-    if (!order) return sendError(res, 'Order not found', 404);
+    if (!order) return res.status(404).json({ message: 'الطلب غير موجود' });
 
     const io = getIo(req);
     if (io) io.emit(`customerLocationUpdated_${order._id}`, { lat, lng });
 
-    sendSuccess(res, null, 'Customer location saved');
+    res.json({ ok: true });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-/* ── Internal: award loyalty points when order delivered ─────────────── */
+/* ══════════════════════════════════════════════════════════
+   Internal helpers
+══════════════════════════════════════════════════════════ */
 async function _awardLoyalty(customerId, order) {
   const cust = await Customer.findById(customerId);
   if (!cust) return;
-
-  const pts = loyalty.computePointsEarned(order.total || 0);
+  const pts      = loyalty.computePointsEarned(order.total || 0);
   cust.loyaltyPoints = (cust.loyaltyPoints || 0) + pts;
   cust.tier          = loyalty.autoTier(cust.loyaltyPoints);
   await cust.save();
 }
 
-/* ── Internal: refund redeemed points on cancellation ───────────────── */
 async function _refundLoyalty(order) {
   const refund = order.pointsRedeemed || 0;
   if (refund > 0 && order.customerId) {
-    await Customer.findByIdAndUpdate(order.customerId, {
-      $inc: { loyaltyPoints: refund },
-    });
+    await Customer.findByIdAndUpdate(order.customerId, { $inc: { loyaltyPoints: refund } });
   }
 }

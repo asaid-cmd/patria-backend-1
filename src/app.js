@@ -49,10 +49,12 @@ app.get('/api/health', (req, res) => {
 app.use('/api', routes);
 app.use('/api/v2', v2Routes);
 app.use('/api/mobile', mobileRoutes);
+// Support both /api/driver/* (Patria) and /api/drivers/* (ERB) paths
 app.use('/api/driver', driverMobileRoutes);
+app.use('/api/drivers', driverMobileRoutes);
 
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' });
+  res.status(404).json({ message: 'الصفحة غير موجودة' });
 });
 
 app.use(errorHandler);

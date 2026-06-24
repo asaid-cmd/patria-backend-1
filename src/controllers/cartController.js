@@ -1,9 +1,12 @@
+/**
+ * Cart Controller
+ * Response format matches ERB exactly — flat JSON, no wrapper.
+ */
+
 const Cart    = require('../models/Cart');
 const Product = require('../models/Product');
-const { sendSuccess, sendError } = require('../utils/apiResponse');
 
-/* Create a stable string key from variant selections + notes.
-   Same product with different variants → different fingerprint → separate cart line. */
+/* Create a stable string key from variant selections + notes. */
 function itemFingerprint(selectedVariants, notes) {
   const varStr = (selectedVariants || [])
     .map(v => `${v.group || ''}:${v.option || ''}`)
@@ -17,15 +20,38 @@ function calcVariantAdjustment(selectedVariants) {
   return (selectedVariants || []).reduce((sum, v) => sum + (Number(v.priceAdjustment) || 0), 0);
 }
 
+/* Build ERB-compatible cart shape. */
+async function cartShape(customerId) {
+  const cart = await Cart.findOne({ customerId })
+    .populate('items.productId', 'name price images');
+
+  const items     = cart?.items || [];
+  const total     = parseFloat(items.reduce((s, i) => s + i.price * i.quantity, 0).toFixed(2));
+  const itemCount = items.reduce((s, i) => s + i.quantity, 0);
+
+  // Map productId → product for ERB compat (`product` field, not `productId`)
+  const mappedItems = items.map(i => ({
+    _id:              i._id,
+    product:          i.productId,   // ERB uses `product` (populated)
+    name:             i.name,
+    price:            i.price,
+    image:            i.image,
+    quantity:         i.quantity,
+    customization:    i.customization,
+    selectedVariants: i.selectedVariants,
+    selectedExtras:   i.selectedExtras,
+    notes:            i.notes,
+  }));
+
+  return { items: mappedItems, total, itemCount };
+}
+
 /* ── GET cart ─────────────────────────────────────────────────────────── */
 exports.getCart = async (req, res) => {
   try {
-    let cart = await Cart.findOne({ customerId: req.user.id })
-      .populate('items.productId', 'name price images');
-    if (!cart) cart = { items: [], customerId: req.user.id };
-    sendSuccess(res, { cart });
+    res.json(await cartShape(req.user.id));
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -36,10 +62,10 @@ exports.addToCart = async (req, res) => {
       productId, quantity = 1,
       customization, selectedVariants, selectedExtras, notes,
     } = req.body;
-    if (!productId) return sendError(res, 'productId is required', 400);
+    if (!productId) return res.status(400).json({ message: 'productId مطلوب' });
 
     const product = await Product.findById(productId);
-    if (!product) return sendError(res, 'Product not found', 404);
+    if (!product) return res.status(404).json({ message: 'المنتج غير موجود' });
 
     const unitPrice = product.price + calcVariantAdjustment(selectedVariants);
     const fp        = itemFingerprint(selectedVariants, notes);
@@ -47,9 +73,10 @@ exports.addToCart = async (req, res) => {
     let cart = await Cart.findOne({ customerId: req.user.id });
     if (!cart) cart = new Cart({ customerId: req.user.id, items: [] });
 
-    // If same product + same variants + same notes already in cart → increment qty
     const existing = cart.items.find(
-      i => i.productId?.toString() === String(productId) && itemFingerprint(i.selectedVariants, i.notes) === fp
+      i =>
+        i.productId?.toString() === String(productId) &&
+        itemFingerprint(i.selectedVariants, i.notes) === fp
     );
 
     if (existing) {
@@ -57,10 +84,10 @@ exports.addToCart = async (req, res) => {
     } else {
       cart.items.push({
         productId,
-        name:            product.name,
-        price:           unitPrice,
-        image:           product.images?.[0],
-        quantity:        Number(quantity),
+        name:             product.name,
+        price:            unitPrice,
+        image:            product.images?.[0],
+        quantity:         Number(quantity),
         customization,
         selectedVariants,
         selectedExtras,
@@ -69,43 +96,40 @@ exports.addToCart = async (req, res) => {
     }
 
     await cart.save();
-    sendSuccess(res, { cart }, 'Item added to cart', 201);
+    res.status(201).json({ ...(await cartShape(req.user.id)), message: 'تمت الإضافة للعربة' });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 /* ── UPDATE item ──────────────────────────────────────────────────────── */
 exports.updateCartItem = async (req, res) => {
   try {
-    const { itemId }  = req.params;
+    const { itemId } = req.params;
     const { quantity, customization, selectedVariants, notes } = req.body;
     if (quantity !== undefined && quantity < 1) {
-      return sendError(res, 'quantity must be >= 1', 400);
+      return res.status(400).json({ message: 'الكمية يجب أن تكون 1 أو أكثر' });
     }
 
     const cart = await Cart.findOne({ customerId: req.user.id });
-    if (!cart) return sendError(res, 'Cart not found', 404);
+    if (!cart) return res.status(404).json({ message: 'العربة غير موجودة' });
 
     const item = cart.items.id(itemId);
-    if (!item) return sendError(res, 'Cart item not found', 404);
+    if (!item) return res.status(404).json({ message: 'العنصر غير موجود' });
 
     if (quantity !== undefined)      item.quantity        = Number(quantity);
     if (customization !== undefined) item.customization   = customization;
     if (notes !== undefined)         item.notes           = notes;
     if (selectedVariants !== undefined) {
       item.selectedVariants = selectedVariants;
-      // Recalculate price with new variants
-      const product = await Product.findById(item.productId).select('price').lean();
-      if (product) {
-        item.price = product.price + calcVariantAdjustment(selectedVariants);
-      }
+      const p = await Product.findById(item.productId).select('price').lean();
+      if (p) item.price = p.price + calcVariantAdjustment(selectedVariants);
     }
 
     await cart.save();
-    sendSuccess(res, { cart }, 'Cart item updated');
+    res.json(await cartShape(req.user.id));
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -114,14 +138,14 @@ exports.getCartItem = async (req, res) => {
   try {
     const cart = await Cart.findOne({ customerId: req.user.id })
       .populate('items.productId', 'name price images variantGroups');
-    if (!cart) return sendError(res, 'Cart not found', 404);
+    if (!cart) return res.status(404).json({ message: 'العربة غير موجودة' });
 
     const item = cart.items.id(req.params.itemId);
-    if (!item) return sendError(res, 'Cart item not found', 404);
+    if (!item) return res.status(404).json({ message: 'العنصر غير موجود' });
 
-    sendSuccess(res, { item });
+    res.json(item);
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -129,13 +153,13 @@ exports.getCartItem = async (req, res) => {
 exports.removeCartItem = async (req, res) => {
   try {
     const cart = await Cart.findOne({ customerId: req.user.id });
-    if (!cart) return sendError(res, 'Cart not found', 404);
+    if (!cart) return res.status(404).json({ message: 'العربة غير موجودة' });
 
     cart.items = cart.items.filter(i => i._id.toString() !== req.params.itemId);
     await cart.save();
-    sendSuccess(res, { cart }, 'Item removed from cart');
+    res.json(await cartShape(req.user.id));
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -143,9 +167,9 @@ exports.removeCartItem = async (req, res) => {
 exports.clearCart = async (req, res) => {
   try {
     await Cart.findOneAndUpdate({ customerId: req.user.id }, { items: [] });
-    sendSuccess(res, null, 'Cart cleared');
+    res.json({ items: [], total: 0, itemCount: 0, message: 'تم تفريغ العربة' });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -154,21 +178,21 @@ exports.cartToOrderItems = async (req, res) => {
   try {
     const cart = await Cart.findOne({ customerId: req.user.id })
       .populate('items.productId', 'name price');
-    if (!cart || !cart.items.length) return sendSuccess(res, { items: [] });
+    if (!cart || !cart.items.length) return res.json({ items: [] });
 
     const items = cart.items.map(i => ({
-      product:         i.productId,
-      name:            i.name,
-      quantity:        i.quantity,
-      price:           i.price,
-      customization:   i.customization,
+      product:          i.productId,
+      name:             i.name,
+      quantity:         i.quantity,
+      price:            i.price,
+      customization:    i.customization,
       selectedVariants: i.selectedVariants,
-      selectedExtras:  i.selectedExtras,
-      notes:           i.notes,
+      selectedExtras:   i.selectedExtras,
+      notes:            i.notes,
     }));
 
-    sendSuccess(res, { items });
+    res.json({ items });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };

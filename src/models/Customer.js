@@ -3,11 +3,20 @@ const bcrypt = require('bcryptjs');
 const { CUSTOMER_TIER } = require('../config/constants');
 
 const addressSchema = new mongoose.Schema({
-  label: { type: String, default: 'Home' },
-  address: { type: String, required: true },
-  lat: Number,
-  lng: Number,
-  isDefault: { type: Boolean, default: false },
+  label:           { type: String, default: 'Home' },
+  address:         { type: String },
+  zone:            { type: String },
+  zoneId:          { type: mongoose.Schema.Types.ObjectId, ref: 'Zone', default: null },
+  lat:             Number,
+  lng:             Number,
+  buildingName:    { type: String },
+  apartmentNo:     { type: String },
+  floor:           { type: String },
+  street:          { type: String },
+  city:            { type: String },
+  nearbyTrademark: { type: String },
+  phone:           { type: String },
+  isDefault:       { type: Boolean, default: false },
 }, { _id: true });
 
 const customerSchema = new mongoose.Schema({
@@ -32,8 +41,12 @@ const customerSchema = new mongoose.Schema({
   },
   addresses: [addressSchema],
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-  fcmTokens: [{ type: String }],
-  isActive: { type: Boolean, default: true },
+  fcmTokens:     [{ type: String }],
+  isActive:      { type: Boolean, default: true },
+  provider:      { type: String, enum: ['phone', 'google', 'apple'], default: 'phone' },
+  orderCount:    { type: Number, default: 0 },
+  lifetimeValue: { type: Number, default: 0 },
+  lastOrderDate: { type: Date, default: null },
 }, { timestamps: true });
 
 customerSchema.pre('save', async function (next) {

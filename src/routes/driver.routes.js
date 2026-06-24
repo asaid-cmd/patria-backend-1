@@ -7,8 +7,7 @@ const router = express.Router();
 const verifyDriver = (req, res, next) => {
   verifyToken(req, res, () => {
     if (req.user.role !== 'driver') {
-      const { sendError } = require('../utils/apiResponse');
-      return sendError(res, 'Driver access required', 403);
+      return res.status(403).json({ message: 'هذا المسار مخصص لتطبيق المندوب فقط' });
     }
     next();
   });

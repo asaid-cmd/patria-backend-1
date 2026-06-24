@@ -48,6 +48,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api', routes);
 app.use('/api/v2', v2Routes);
+app.use('/api/seed', require('./routes/seed.routes'));
 app.use('/api/mobile', mobileRoutes);
 // Support both /api/driver/* (Patria) and /api/drivers/* (ERB) paths
 app.use('/api/driver', driverMobileRoutes);

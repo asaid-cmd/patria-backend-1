@@ -105,9 +105,14 @@ exports.updateOrderStatus = async (req, res) => {
 exports.getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('tableId staffId items.productId assignedDriver');
+      .populate('tableId staffId assignedDriver')
+      .populate('items.product',   'name price images')
+      .populate('items.productId', 'name price images')
+      .lean();
     if (!order) return sendError(res, 'Order not found', 404);
-    sendSuccess(res, { order });
+    // Mobile requests get ERB shape; dashboard requests get the raw order
+    const isMobile = req.originalUrl.includes('/mobile/');
+    res.json(isMobile ? _orderShape(order) : order);
   } catch (error) {
     sendError(res, error.message, 500, error);
   }
@@ -222,28 +227,34 @@ exports.placeCustomerOrder = async (req, res) => {
       data:       { screen: 'order_details', orderId: String(order._id) },
     }).catch(() => {});
 
-    // 6. Return flat order object (ERB format)
-    const payload                    = order.toObject();
-    payload.estimatedPointsEarned    = loyalty.computePointsEarned(total);
-    res.status(201).json(payload);
+    // 6. Return ERB-format order
+    const populated = await Order.findById(order._id)
+      .populate('items.product', 'name price images')
+      .populate('items.productId', 'name price images')
+      .lean();
+    const estimatedPoints = loyalty.computePointsEarned(total);
+    res.status(201).json(_orderShape(populated, estimatedPoints));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// ERB returns a direct ARRAY (not paginated object)
 exports.getMyOrders = async (req, res) => {
   try {
-    const limit  = parseInt(req.query.limit) || 20;
-    const page   = parseInt(req.query.page)  || 1;
-    const skip   = (page - 1) * limit;
-    const filter = { customerId: req.user.id };
+    const limit = parseInt(req.query.limit) || 50;
+    const page  = parseInt(req.query.page)  || 1;
+    const skip  = (page - 1) * limit;
 
-    const [orders, total] = await Promise.all([
-      Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
-      Order.countDocuments(filter),
-    ]);
+    const orders = await Order.find({ customerId: req.user.id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('items.product',   'name price images')
+      .populate('items.productId', 'name price images')
+      .lean();
 
-    res.json({ orders, total, page, pages: Math.ceil(total / limit) });
+    res.json(orders.map(o => _orderShape(o)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -255,22 +266,19 @@ exports.reorder = async (req, res) => {
     if (!original) return res.status(404).json({ message: 'الطلب غير موجود' });
 
     const newOrder = await Order.create({
-      type:          original.type,
-      customerId:    req.user.id,
-      customer:      original.customer,
-      items:         original.items,
-      subtotal:      original.subtotal,
-      deliveryFee:   original.deliveryFee,
-      total:         original.total,
-      paymentMethod: original.paymentMethod,
-      notes:         original.notes,
-      status:        'pending',
+      type: original.type, customerId: req.user.id,
+      customer: original.customer, items: original.items,
+      subtotal: original.subtotal, deliveryFee: original.deliveryFee,
+      total: original.total, paymentMethod: original.paymentMethod,
+      notes: original.notes, status: 'pending',
     });
 
     const io = getIo(req);
     if (io) io.emit('newOrder', newOrder);
 
-    res.status(201).json(newOrder.toObject());
+    const populated = await Order.findById(newOrder._id)
+      .populate('items.product', 'name price images').lean();
+    res.status(201).json(_orderShape(populated));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -284,7 +292,7 @@ exports.getOrderTracking = async (req, res) => {
 
     const driver = order.assignedDriver;
     res.json({
-      orderId:        String(order._id),
+      orderId:        order.orderId || String(order._id),
       status:         order.status,
       orderType:      order.type,
       deliveryStatus: order.deliveryStatus,
@@ -302,12 +310,70 @@ exports.getOrderTracking = async (req, res) => {
         lng:               driver.location?.lng,
         locationUpdatedAt: driver.location?.updatedAt,
       } : null,
-      summary: order.summary || null,
+      summary: {
+        subtotal:    order.subtotal,
+        deliveryFee: order.deliveryFee,
+        discount:    order.discount,
+        total:       order.total,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+/* Build ERB-compatible order shape — matches API_RESPONSES_EXAMPLES.json exactly */
+function _orderShape(o, estimatedPointsEarned) {
+  const items = (o.items || []).map(item => {
+    const prod = item.product || item.productId;
+    const img  = prod?.images?.[0] || item.image || null;
+    const variantDisplay = (item.selectedVariants || [])
+      .map(v => `${v.group}: ${v.option}`).join(', ');
+    return {
+      _id:              item._id,
+      product:          prod ? { _id: prod._id, name: prod.name, price: prod.price, image: img } : null,
+      name:             item.name || prod?.name,
+      quantity:         item.quantity,
+      price:            item.price,
+      notes:            item.notes || '',
+      selectedVariants: item.selectedVariants || [],
+      selectedExtras:   item.selectedExtras   || [],
+      variantDisplay,
+    };
+  });
+
+  return {
+    _id:           o._id,
+    orderId:       o.orderId,
+    createdAt:     o.createdAt,
+    status:        o.status,
+    deliveryStatus:o.deliveryStatus || null,
+    type:          o.type,
+    customer:      o.customer || null,
+    items,
+    summary: {
+      subtotal:    o.subtotal    || 0,
+      deliveryFee: o.deliveryFee || 0,
+      discount:    o.discount    || 0,
+      total:       o.total       || 0,
+    },
+    totalPrice:            o.total       || 0,
+    subtotal:              o.subtotal    || 0,
+    deliveryFee:           o.deliveryFee || 0,
+    discount:              o.discount    || 0,
+    couponCode:            o.couponCode  || null,
+    pointsRedeemed:        o.pointsRedeemed        || 0,
+    pointsDiscountAmount:  o.pointsDiscountAmount   || 0,
+    estimatedPointsEarned: estimatedPointsEarned ?? (o.estimatedPointsEarned || 0),
+    paymentMethod:         o.paymentMethod || null,
+    notes:                 o.notes        || null,
+    isReviewed:            o.isReviewed   || false,
+    rating:                o.rating       || null,
+    reviewComment:         o.reviewComment || null,
+    assignedDriver:        o.assignedDriver || null,
+    updatedAt:             o.updatedAt,
+  };
+}
 
 exports.saveCustomerLocation = async (req, res) => {
   try {

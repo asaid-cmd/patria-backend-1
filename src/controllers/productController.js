@@ -3,13 +3,70 @@ const { sendSuccess, sendError } = require('../utils/apiResponse');
 const { getPaginationParams, paginatedResult } = require('../utils/pagination');
 const { validators, validate } = require('../utils/validators');
 
-/* Map product to ERB shape — image is first item of images[] */
+/* Map product to ERB shape exactly */
 function productShape(p) {
   const obj = p.toObject ? p.toObject() : p;
+
+  // category = string (category name), not object
+  const catObj = obj.category || obj.categoryId;
+  const catName = typeof catObj === 'string' ? catObj : (catObj?.name || '');
+
+  // variantGroups: add label (= name) to each option, add virtual id
+  const variantGroups = (obj.variantGroups || []).map(vg => ({
+    name:     vg.name,
+    required: vg.required || false,
+    options: (vg.options || []).map(opt => ({
+      label:           opt.label || opt.name,
+      priceAdjustment: opt.priceAdjustment || 0,
+      _id:             opt._id,
+      id:              opt._id ? String(opt._id) : undefined,
+    })),
+    _id: vg._id,
+    id:  vg._id ? String(vg._id) : undefined,
+  }));
+
+  // extras: add virtual id
+  const extras = (obj.extras || []).map(e => ({
+    name:     e.name,
+    price:    e.price || 0,
+    isActive: e.isActive !== false,
+    _id:      e._id,
+    id:       e._id ? String(e._id) : undefined,
+  }));
+
+  const inventory = obj.stockQty || obj.inventory || 0;
+
   return {
-    ...obj,
-    image:    obj.images?.[0] || obj.image || null,
-    category: obj.category || obj.categoryId || null,
+    customizationOptions: {
+      roastLevels: ['Light', 'Medium', 'Dark'],
+      grindTypes:  ['Whole Bean', 'Espresso', 'Filter'],
+    },
+    _id:              obj._id,
+    name:             obj.name,
+    description:      obj.description || '',
+    price:            obj.price || 0,
+    category:         catName,
+    image:            obj.images?.[0] || obj.image || null,
+    rate:             obj.avgRating    || obj.rate         || 0,
+    reviewsCount:     obj.ratingCount  || obj.reviewsCount || 0,
+    locationStock:    obj.locationStock    || [],
+    lowStockThreshold:obj.lowStockThreshold || 10,
+    isIngredient:     obj.isIngredient  || false,
+    unit:             obj.unit          || 'pcs',
+    isActive:         obj.isActive !== false,
+    inventory,
+    variantGroups,
+    sizes:            obj.sizes     || [],
+    createdAt:        obj.createdAt,
+    updatedAt:        obj.updatedAt,
+    __v:              obj.__v || 0,
+    costPrice:        obj.costPrice || 0,
+    barcode:          obj.barcode   || null,
+    extras,
+    totalInventory:         inventory,
+    haveCustomizationOption: variantGroups.length > 0,
+    id:       obj._id ? String(obj._id) : '',
+    hasRecipe: false,
   };
 }
 

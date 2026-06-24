@@ -17,4 +17,6 @@ jobs:
           timeout: 30s
           script: |
             cd /var/www/patria-backend-1
+            git pull origin main
             docker exec patria-backend node scripts/createTestCustomer.js
+            docker exec patria-backend node scripts/seedProducts.js

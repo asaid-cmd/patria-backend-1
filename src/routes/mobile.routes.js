@@ -798,40 +798,11 @@ router.post('/orders', verifyCustomer, orderController.placeCustomerOrder);
  *       200: { description: Paginated order history }
  */
 router.get('/orders', verifyCustomer, orderController.getMyOrders);
-
-/**
- * @swagger
- * /mobile/orders/{id}:
- *   get:
- *     summary: Get order details
- *     tags: [Mobile — Orders]
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200: { description: Order details }
- */
-router.get('/orders/:id', verifyCustomer, orderController.getOrderById);
-
-/**
- * @swagger
- * /mobile/orders/reorder/{id}:
- *   post:
- *     summary: Repeat a previous order
- *     tags: [Mobile — Orders]
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       201: { description: New order placed }
- */
+// ERB alias — must be BEFORE /:id to avoid ObjectId cast error
+router.get('/orders/my-orders', verifyCustomer, orderController.getMyOrders);
 router.post('/orders/reorder/:id', verifyCustomer, orderController.reorder);
+
+router.get('/orders/:id', verifyCustomer, orderController.getOrderById);
 
 /**
  * @swagger
@@ -1209,5 +1180,28 @@ router.get('/search/history', verifyCustomer, customerSearchController.getHistor
  *       200: { description: History cleared }
  */
 router.delete('/search/history', verifyCustomer, customerSearchController.clearHistory);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ERB PATH ALIASES  /api/mobile/users/*
+   Flutter app uses /users/ prefix — redirect to the same controllers
+══════════════════════════════════════════════════════════════════════════ */
+// Profile
+router.get('/users/me',          verifyCustomer, customerAuthController.getProfile);
+router.put('/users/me',          verifyCustomer, customerAuthController.updateProfile);
+
+// Addresses
+router.get('/users/addresses',              verifyCustomer, customerAuthController.getAddresses);
+router.post('/users/addresses',             verifyCustomer, customerAuthController.addAddress);
+router.put('/users/addresses/:addressId',   verifyCustomer, customerAuthController.updateAddress);
+router.delete('/users/addresses/:addressId',verifyCustomer, customerAuthController.deleteAddress);
+router.patch('/users/addresses/:id/set-default', verifyCustomer, customerAuthController.setDefaultAddress);
+
+// Favorites
+router.get('/users/favorites',                verifyCustomer, customerAuthController.getFavorites);
+router.post('/users/favorites/:productId',    verifyCustomer, customerAuthController.addFavorite);
+router.delete('/users/favorites/:productId',  verifyCustomer, customerAuthController.removeFavorite);
+
+// Loyalty
+router.get('/users/loyalty',  verifyCustomer, customerAuthController.getLoyalty);
 
 module.exports = router;

@@ -278,6 +278,86 @@ router.delete('/favorites/:productId', verifyCustomer, customerAuthController.re
 
 /**
  * @swagger
+ * /users/addresses:
+ *   get:
+ *     summary: Get all saved addresses
+ *     tags: [Addresses]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of saved addresses
+ */
+router.get('/addresses', verifyCustomer, customerAuthController.getAddresses);
+
+/**
+ * @swagger
+ * /users/addresses:
+ *   post:
+ *     summary: Add new address
+ *     tags: [Addresses]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AddressInput'
+ *     responses:
+ *       201:
+ *         description: Address added
+ */
+router.post('/addresses', verifyCustomer, customerAuthController.addAddress);
+
+/**
+ * @swagger
+ * /users/addresses/{id}:
+ *   put:
+ *     summary: Update address
+ *     tags: [Addresses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AddressInput'
+ *     responses:
+ *       200:
+ *         description: Address updated
+ */
+router.put('/addresses/:addressId', verifyCustomer, customerAuthController.updateAddress);
+
+/**
+ * @swagger
+ * /users/addresses/{id}:
+ *   delete:
+ *     summary: Delete address
+ *     tags: [Addresses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Address deleted
+ */
+router.delete('/addresses/:addressId', verifyCustomer, customerAuthController.deleteAddress);
+
+/**
+ * @swagger
  * /users/addresses/{id}/set-default:
  *   patch:
  *     summary: Set address as default

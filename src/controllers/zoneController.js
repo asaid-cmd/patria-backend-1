@@ -2,11 +2,25 @@ const Zone = require('../models/Zone');
 const Customer = require('../models/Customer');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 
+// Map our Zone schema fields to ERB's ZonePublic/ZoneLookupResult field names
+function zoneShape(z) {
+  return {
+    _id:              z._id,
+    name:             z.name,
+    nameAr:           z.nameAr,
+    deliveryFee:      z.deliveryFee,
+    minOrderAmount:   z.minOrder || z.minOrderAmount || 0,
+    estimatedMinutes: z.estimatedMinutes,
+    deliverySchedule: z.deliverySchedule || [],
+    status:           z.isActive ? 'Available' : 'Unavailable',
+  };
+}
+
 // Mobile: returns bare array (ERB shape)
 exports.getZones = async (req, res) => {
   try {
     const zones = await Zone.find({ isActive: true }).sort({ name: 1 });
-    res.json(zones);
+    res.json(zones.map(zoneShape));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -40,14 +54,14 @@ exports.lookupZone = async (req, res) => {
           if (!zone.polygon || zone.polygon.length < 3) return false;
           return pointInPolygon([latNum, lngNum], zone.polygon);
         });
-        if (matched) return sendSuccess(res, { zone: matched });
+        if (matched) return res.json(zoneShape(matched));
       }
     }
 
     // 3. Fallback: match by zoneId
     if (zoneId) {
       const matched = zones.find(z => String(z._id) === zoneId);
-      if (matched) return sendSuccess(res, { zone: matched });
+      if (matched) return res.json(zoneShape(matched));
     }
 
     // 4. Fallback: match by zone name
@@ -56,12 +70,12 @@ exports.lookupZone = async (req, res) => {
         z.name?.toLowerCase() === zoneName.toLowerCase() ||
         z.nameAr === zoneName
       );
-      if (matched) return sendSuccess(res, { zone: matched });
+      if (matched) return res.json(zoneShape(matched));
     }
 
     // 5. No zone found — return first active zone or null with 0 fee (never block checkout)
     const fallback = zones[0] || null;
-    sendSuccess(res, { zone: fallback });
+    res.json(fallback ? zoneShape(fallback) : null);
   } catch (error) {
     sendError(res, error.message, 500, error);
   }

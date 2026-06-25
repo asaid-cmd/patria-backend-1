@@ -233,9 +233,22 @@ exports.resetPassword = async (req, res) => {
 ══════════════════════════════════════════════════════════ */
 exports.oauthLogin = async (req, res) => {
   try {
-    const { email, name, provider, providerId } = req.body;
-    if (!email || !provider || !providerId) {
-      return res.status(400).json({ message: 'email و provider و providerId مطلوبة' });
+    let { email, name, provider = 'google', providerId, idToken } = req.body;
+
+    // ERB sends idToken (Firebase) — decode it to extract email/name
+    if (idToken && !email) {
+      try {
+        const decoded = jwt.decode(idToken);
+        if (decoded) {
+          email      = decoded.email      || email;
+          name       = decoded.name       || name;
+          providerId = decoded.sub        || providerId;
+        }
+      } catch (_) { /* fall through to validation below */ }
+    }
+
+    if (!email) {
+      return res.status(400).json({ message: 'email أو idToken مطلوب' });
     }
 
     let customer = await Customer.findOne({ email });
@@ -384,7 +397,8 @@ exports.getLoyalty = async (req, res) => {
 
 exports.loyaltyCheckoutPreview = async (req, res) => {
   try {
-    const { subtotal = 0, deliveryFee = 0, couponDiscount = 0, pointsToRedeem = 0 } = req.body;
+    const { orderTotal, subtotal: _sub = 0, deliveryFee = 0, couponDiscount = 0, pointsToRedeem = 0 } = req.body;
+    const subtotal = orderTotal ?? _sub;
     const customer = await Customer.findById(req.user.id).select('loyaltyPoints');
     const balance  = customer?.loyaltyPoints || 0;
 

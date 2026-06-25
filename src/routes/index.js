@@ -58,5 +58,6 @@ router.use('/logistics', logisticsRoutes);
 router.use('/cart', cartRoutes);
 router.use('/drivers', driverRoutes);
 router.use('/zones', zoneRoutes);
+router.use('/payment-methods', require('./paymentMethod.routes'));
 
 module.exports = router;

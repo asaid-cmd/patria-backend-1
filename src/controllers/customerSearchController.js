@@ -1,24 +1,26 @@
 const CustomerSearch = require('../models/CustomerSearch');
-const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 exports.logSearch = async (req, res) => {
   try {
     const { query } = req.body;
-    if (!query) return sendError(res, 'query is required', 400);
+    if (!query) return res.status(400).json({ message: 'query is required' });
 
     await CustomerSearch.create({ customerId: req.user.id, query: query.trim().toLowerCase() });
-    sendSuccess(res, null, 'Search logged');
+    res.status(201).json({});
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.getLastSearch = async (req, res) => {
   try {
     const last = await CustomerSearch.findOne({ customerId: req.user.id }).sort({ createdAt: -1 });
-    sendSuccess(res, { query: last ? last.query : null });
+    res.json({
+      query:      last ? last.query : null,
+      searchedAt: last ? last.createdAt : null,
+    });
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -32,9 +34,9 @@ exports.getTrending = async (req, res) => {
       { $limit: 10 },
       { $project: { _id: 0, query: '$_id', count: 1 } },
     ]);
-    sendSuccess(res, { trending });
+    res.json(trending);
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -44,17 +46,18 @@ exports.getHistory = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(20)
       .select('query createdAt');
-    sendSuccess(res, { history });
+    // Map createdAt → searchedAt to match ERB response schema
+    res.json(history.map(h => ({ query: h.query, searchedAt: h.createdAt })));
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.clearHistory = async (req, res) => {
   try {
     await CustomerSearch.deleteMany({ customerId: req.user.id });
-    sendSuccess(res, null, 'Search history cleared');
+    res.json({});
   } catch (error) {
-    sendError(res, error.message, 500, error);
+    res.status(500).json({ message: error.message });
   }
 };

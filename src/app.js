@@ -81,6 +81,7 @@ app.post('/api/deploy-hook', (req, res) => {
 
 app.use('/api', routes);
 app.use('/api/v2', v2Routes);
+app.use('/api/mobile/v2', v2Routes);   // Flutter uses /api/mobile as base URL prefix
 app.use('/api/seed', require('./routes/seed.routes'));
 app.use('/api/mobile', mobileRoutes);
 // Support both /api/driver/* (Patria) and /api/drivers/* (ERB) paths

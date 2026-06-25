@@ -30,6 +30,18 @@ router.get('/', categoryController.getCategories);
 
 /**
  * @swagger
+ * /categories/with-counts:
+ *   get:
+ *     summary: Get all categories with product counts (ERB alias)
+ *     tags: [Categories]
+ *     responses:
+ *       200:
+ *         description: List of categories with productsCount
+ */
+router.get('/with-counts', categoryController.getCategories);
+
+/**
+ * @swagger
  * /categories:
  *   post:
  *     summary: Create a new category

@@ -1204,6 +1204,8 @@ router.post('/customer-search/log',     verifyCustomer, customerSearchController
 // Profile
 router.get('/users/me',          verifyCustomer, customerAuthController.getProfile);
 router.put('/users/me',          verifyCustomer, customerAuthController.updateProfile);
+router.get('/users/profile',     verifyCustomer, customerAuthController.getProfile);
+router.put('/users/profile',     verifyCustomer, customerAuthController.updateProfile);
 
 // Addresses
 router.get('/users/addresses',              verifyCustomer, customerAuthController.getAddresses);
@@ -1218,6 +1220,7 @@ router.post('/users/favorites/:productId',    verifyCustomer, customerAuthContro
 router.delete('/users/favorites/:productId',  verifyCustomer, customerAuthController.removeFavorite);
 
 // Loyalty
-router.get('/users/loyalty',  verifyCustomer, customerAuthController.getLoyalty);
+router.get('/users/loyalty',                         verifyCustomer, customerAuthController.getLoyalty);
+router.post('/users/loyalty/checkout-preview',       verifyCustomer, customerAuthController.loyaltyCheckoutPreview);
 
 module.exports = router;

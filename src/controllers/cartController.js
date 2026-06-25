@@ -140,10 +140,21 @@ exports.getCartItem = async (req, res) => {
       .populate('items.productId', 'name price images variantGroups');
     if (!cart) return res.status(404).json({ message: 'العربة غير موجودة' });
 
-    const item = cart.items.id(req.params.itemId);
-    if (!item) return res.status(404).json({ message: 'العنصر غير موجود' });
+    const raw = cart.items.id(req.params.itemId);
+    if (!raw) return res.status(404).json({ message: 'العنصر غير موجود' });
 
-    res.json(item);
+    // Return ERB-compatible shape: `product` field (populated), not raw `productId`
+    res.json({
+      _id:              raw._id,
+      product:          raw.productId,
+      name:             raw.name,
+      quantity:         raw.quantity,
+      unitPrice:        raw.unitPrice,
+      price:            raw.price,
+      image:            raw.image,
+      selectedVariants: raw.selectedVariants,
+      notes:            raw.notes,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

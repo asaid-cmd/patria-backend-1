@@ -43,6 +43,13 @@ const verifyCustomer = (req, res, next) => {
   });
 };
 
+// Optional auth — attaches req.user if token present, never blocks the request
+const optionalAuth = (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return next();
+  verifyToken(req, res, () => next());
+};
+
 /* ══════════════════════════════════════════════════════════════════════════
    AUTH  /api/mobile/auth/*
 ══════════════════════════════════════════════════════════════════════════ */
@@ -1100,7 +1107,7 @@ router.get('/zones', zoneController.getZones);
  *       200: { description: Matched zone with delivery fee }
  *       404: { description: No delivery zone for this location }
  */
-router.get('/zones/lookup', zoneController.lookupZone);
+router.get('/zones/lookup', optionalAuth, zoneController.lookupZone);
 
 /* ══════════════════════════════════════════════════════════════════════════
    SEARCH  /api/mobile/search/*
@@ -1180,6 +1187,15 @@ router.get('/search/history', verifyCustomer, customerSearchController.getHistor
  *       200: { description: History cleared }
  */
 router.delete('/search/history', verifyCustomer, customerSearchController.clearHistory);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CUSTOMER-SEARCH ALIASES  /api/mobile/customer-search/*
+   Flutter uses customer-search/ prefix instead of search/
+══════════════════════════════════════════════════════════════════════════ */
+router.get('/customer-search/trending', customerSearchController.getTrending);
+router.get('/customer-search/history',  verifyCustomer, customerSearchController.getHistory);
+router.delete('/customer-search/history', verifyCustomer, customerSearchController.clearHistory);
+router.post('/customer-search/log',     verifyCustomer, customerSearchController.logSearch);
 
 /* ══════════════════════════════════════════════════════════════════════════
    ERB PATH ALIASES  /api/mobile/users/*

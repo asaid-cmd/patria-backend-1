@@ -76,7 +76,26 @@ exports.getProducts = async (req, res) => {
     const { categoryId, category, search } = req.query;
     const { skip, limit, page } = getPaginationParams(req.query);
     const query = { isActive: true };
-    if (categoryId || category) query.$or = [{ categoryId: categoryId || category }, { category: categoryId || category }];
+
+    if (categoryId || category) {
+      const catValue = categoryId || category;
+      const mongoose = require('mongoose');
+      if (mongoose.Types.ObjectId.isValid(catValue)) {
+        // Valid ObjectId — filter directly
+        query.$or = [{ categoryId: catValue }, { category: catValue }];
+      } else {
+        // Category name string — resolve to _id first
+        const Category = require('../models/Category');
+        const cat = await Category.findOne({ name: { $regex: `^${catValue}$`, $options: 'i' } }).lean();
+        if (cat) {
+          query.$or = [{ categoryId: cat._id }, { category: cat._id }];
+        } else {
+          // No matching category — return empty
+          return res.json({ products: [], page: 1, pages: 0, total: 0 });
+        }
+      }
+    }
+
     if (search) query.name = { $regex: search, $options: 'i' };
 
     const [products, total] = await Promise.all([

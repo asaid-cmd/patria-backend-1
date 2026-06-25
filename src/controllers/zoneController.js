@@ -2,8 +2,9 @@ const Zone = require('../models/Zone');
 const Customer = require('../models/Customer');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 
-// Map our Zone schema fields to ERB's ZonePublic/ZoneLookupResult field names
+// Map our Zone schema → ERB ZonePublic/ZoneLookupResult field names
 function zoneShape(z) {
+  if (!z) return null;
   return {
     _id:              z._id,
     name:             z.name,
@@ -29,7 +30,6 @@ exports.getZones = async (req, res) => {
 exports.lookupZone = async (req, res) => {
   try {
     let { lat, lng, addressId, zoneId, zone: zoneName, name } = req.query;
-    // Accept ?name= as alias for ?zone= (Flutter sends name param)
     if (!zoneName && name) zoneName = name;
 
     // 1. If addressId provided, fetch coordinates from customer's saved address
@@ -73,7 +73,7 @@ exports.lookupZone = async (req, res) => {
       if (matched) return res.json(zoneShape(matched));
     }
 
-    // 5. No zone found — return first active zone or null with 0 fee (never block checkout)
+    // 5. No zone found — return first active zone or null (never block checkout)
     const fallback = zones[0] || null;
     res.json(fallback ? zoneShape(fallback) : null);
   } catch (error) {

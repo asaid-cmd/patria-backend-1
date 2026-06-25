@@ -189,6 +189,30 @@ router.post('/', async (req, res) => {
     }
     results.push(`✅ Products: ${created} created, ${updated} updated`);
 
+    // ── Zones ────────────────────────────────────────────────────────────────
+    const Zone = require('../models/Zone');
+    const zoneDefs = [
+      { name: 'San Stefano',        nameAr: 'سان ستيفانو',        deliveryFee: 25, minOrder: 50, estimatedMinutes: 30 },
+      { name: 'Smouha',             nameAr: 'سموحة',               deliveryFee: 20, minOrder: 50, estimatedMinutes: 25 },
+      { name: 'Kafr Abdo',          nameAr: 'كفر عبده',            deliveryFee: 20, minOrder: 50, estimatedMinutes: 25 },
+      { name: 'Bab Sharki',         nameAr: 'باب شرقي',            deliveryFee: 15, minOrder: 50, estimatedMinutes: 20 },
+      { name: 'Glim',               nameAr: 'جليم',                deliveryFee: 25, minOrder: 50, estimatedMinutes: 30 },
+      { name: 'Sidi Bishr',         nameAr: 'سيدي بشر',            deliveryFee: 30, minOrder: 80, estimatedMinutes: 35 },
+      { name: 'Roushdy',            nameAr: 'روشدي',               deliveryFee: 20, minOrder: 50, estimatedMinutes: 25 },
+      { name: 'Bolkly',             nameAr: 'بلكلي',               deliveryFee: 20, minOrder: 50, estimatedMinutes: 25 },
+      { name: 'Loran',              nameAr: 'لوران',               deliveryFee: 25, minOrder: 50, estimatedMinutes: 30 },
+      { name: 'Mandara',            nameAr: 'المندرة',             deliveryFee: 35, minOrder: 80, estimatedMinutes: 40 },
+    ];
+    let zonesCreated = 0;
+    for (const z of zoneDefs) {
+      const exists = await Zone.findOne({ name: z.name });
+      if (!exists) {
+        await Zone.create({ ...z, isActive: true });
+        zonesCreated++;
+      }
+    }
+    results.push(`✅ Zones: ${zonesCreated} created (${zoneDefs.length - zonesCreated} already existed)`);
+
     res.json({ ok: true, results });
   } catch (err) {
     res.status(500).json({ message: err.message, results });

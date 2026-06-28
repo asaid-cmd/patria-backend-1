@@ -9,14 +9,39 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Reservations
- *   description: Table reservation management (Dashboard)
+ *   description: |
+ *     Table reservation management (Dashboard).
+ *
+ *     **Reservation status flow:**
+ *     ```
+ *     on_hold → confirmed → sitting → ended
+ *     (any status) → cancelled
+ *     ```
+ *
+ *     **Status values:** `on_hold` | `confirmed` | `sitting` | `ended` | `cancelled`
+ *
+ *     List endpoints return paginated results with the `tableId` field populated (full table object).
+ *
+ *     **All endpoints require authentication.**
  */
 
 /**
  * @swagger
  * /reservations:
  *   get:
- *     summary: Get all reservations (with optional date filter)
+ *     summary: Get all reservations (paginated, filterable by date)
+ *     description: |
+ *       Returns a paginated list of reservations. The `tableId` field is populated with the full table object.
+ *
+ *       **Use `?date=YYYY-MM-DD` to filter reservations for a specific day.**
+ *
+ *       **Response format:**
+ *       ```json
+ *       {
+ *         "data": [ { ...reservation with populated tableId... } ],
+ *         "pagination": { "total": 10, "page": 1, "limit": 10, "totalPages": 1, ... }
+ *       }
+ *       ```
  *     tags: [Reservations]
  *     security:
  *       - bearerAuth: []
@@ -27,7 +52,9 @@ const router = express.Router();
  *           type: string
  *           format: date
  *           example: "2026-06-28"
- *         description: Filter by reservation date (YYYY-MM-DD)
+ *         description: |
+ *           Filter reservations for a specific date (YYYY-MM-DD).
+ *           Matches all reservations from 00:00:00 to 23:59:59 of that day.
  *       - in: query
  *         name: status
  *         schema:
@@ -39,11 +66,13 @@ const router = express.Router();
  *         schema:
  *           type: integer
  *           default: 1
+ *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *           default: 20
+ *           default: 10
+ *         description: Items per page (max 100)
  *     responses:
  *       200:
  *         description: Paginated list of reservations
@@ -61,9 +90,9 @@ const router = express.Router();
  *             example:
  *               data:
  *                 - _id: "64f1a2b3c4d5e6f7a8b9c0d1"
- *                   customerName: Ahmed Said
+ *                   customerName: "Ahmed Said"
  *                   phone: "01012345678"
- *                   customerEmail: ahmed@example.com
+ *                   customerEmail: "ahmed@example.com"
  *                   numberOfPeople: 4
  *                   date: "2026-06-28T00:00:00.000Z"
  *                   time: "19:00"
@@ -71,16 +100,19 @@ const router = express.Router();
  *                     _id: "64f1a2b3c4d5e6f7a8b9c0d2"
  *                     number: 5
  *                     capacity: 6
- *                     section: vip
- *                     status: available
- *                   status: on_hold
+ *                     section: "vip"
+ *                     status: "available"
+ *                     createdAt: "2026-01-01T00:00:00.000Z"
+ *                     updatedAt: "2026-01-01T00:00:00.000Z"
+ *                     __v: 0
+ *                   status: "on_hold"
  *                   createdAt: "2026-06-28T10:00:00.000Z"
  *                   updatedAt: "2026-06-28T10:00:00.000Z"
  *                   __v: 0
  *               pagination:
- *                 total: 10
+ *                 total: 1
  *                 page: 1
- *                 limit: 20
+ *                 limit: 10
  *                 totalPages: 1
  *                 hasNextPage: false
  *                 hasPrevPage: false
@@ -94,6 +126,16 @@ router.get('/', verifyToken, reservationController.getReservations);
  * /reservations:
  *   post:
  *     summary: Create a new table reservation
+ *     description: |
+ *       Creates a new reservation. The default status is `on_hold`.
+ *       The `tableId` in the response is populated with the full table object.
+ *
+ *       **Response format:**
+ *       ```json
+ *       { "reservation": { ...reservation with populated tableId... }, "message": "Reservation created" }
+ *       ```
+ *
+ *       **Required fields:** `customerName`, `phone`, `numberOfPeople`, `date`, `time`
  *     tags: [Reservations]
  *     security:
  *       - bearerAuth: []
@@ -103,33 +145,52 @@ router.get('/', verifyToken, reservationController.getReservations);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [customerName, phone, numberOfPeople, date, time]
+ *             required:
+ *               - customerName
+ *               - phone
+ *               - numberOfPeople
+ *               - date
+ *               - time
  *             properties:
  *               customerName:
  *                 type: string
- *                 example: Ahmed Said
+ *                 description: Full name of the customer
+ *                 example: "Ahmed Said"
  *               phone:
  *                 type: string
+ *                 description: Customer phone number
  *                 example: "01012345678"
  *               customerEmail:
  *                 type: string
- *                 example: ahmed@example.com
+ *                 description: Customer email (optional)
+ *                 example: "ahmed@example.com"
  *               date:
  *                 type: string
  *                 format: date
+ *                 description: Reservation date (YYYY-MM-DD)
  *                 example: "2026-06-28"
  *               time:
  *                 type: string
+ *                 description: Reservation time (HH:MM — 24h format)
  *                 pattern: '^\d{2}:\d{2}$'
  *                 example: "19:00"
  *               numberOfPeople:
  *                 type: integer
  *                 minimum: 1
+ *                 description: Number of guests
  *                 example: 4
  *               tableId:
  *                 type: string
- *                 description: MongoDB ObjectId of the table to reserve
+ *                 description: MongoDB ObjectId of the table to reserve (optional)
  *                 example: "64f1a2b3c4d5e6f7a8b9c0d2"
+ *           example:
+ *             customerName: "Ahmed Said"
+ *             phone: "01012345678"
+ *             customerEmail: "ahmed@example.com"
+ *             date: "2026-06-28"
+ *             time: "19:00"
+ *             numberOfPeople: 4
+ *             tableId: "64f1a2b3c4d5e6f7a8b9c0d2"
  *     responses:
  *       201:
  *         description: Reservation created successfully
@@ -142,9 +203,35 @@ router.get('/', verifyToken, reservationController.getReservations);
  *                   $ref: '#/components/schemas/Reservation'
  *                 message:
  *                   type: string
- *                   example: Reservation created
+ *             example:
+ *               reservation:
+ *                 _id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *                 customerName: "Ahmed Said"
+ *                 phone: "01012345678"
+ *                 customerEmail: "ahmed@example.com"
+ *                 numberOfPeople: 4
+ *                 date: "2026-06-28T00:00:00.000Z"
+ *                 time: "19:00"
+ *                 tableId:
+ *                   _id: "64f1a2b3c4d5e6f7a8b9c0d2"
+ *                   number: 5
+ *                   capacity: 6
+ *                   section: "vip"
+ *                   status: "available"
+ *                   createdAt: "2026-01-01T00:00:00.000Z"
+ *                   updatedAt: "2026-01-01T00:00:00.000Z"
+ *                   __v: 0
+ *                 status: "on_hold"
+ *                 createdAt: "2026-06-28T10:00:00.000Z"
+ *                 updatedAt: "2026-06-28T10:00:00.000Z"
+ *                 __v: 0
+ *               message: "Reservation created"
  *       400:
- *         description: Validation error
+ *         description: Validation error — missing required fields or invalid time format
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "\"numberOfPeople\" must be a number"
  *       401:
  *         description: Unauthorized
  */
@@ -155,6 +242,21 @@ router.post('/', verifyToken, reservationController.createReservation);
  * /reservations/{id}:
  *   put:
  *     summary: Update reservation status
+ *     description: |
+ *       Updates the status of an existing reservation.
+ *
+ *       **Status flow:**
+ *       ```
+ *       on_hold → confirmed → sitting → ended
+ *       (any) → cancelled
+ *       ```
+ *
+ *       **Response format:**
+ *       ```json
+ *       { "reservation": { ...updated reservation object... } }
+ *       ```
+ *
+ *       **Roles required:** ADMIN or MANAGER
  *     tags: [Reservations]
  *     security:
  *       - bearerAuth: []
@@ -172,16 +274,30 @@ router.post('/', verifyToken, reservationController.createReservation);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [status]
+ *             required:
+ *               - status
  *             properties:
  *               status:
  *                 type: string
  *                 enum: [on_hold, confirmed, sitting, ended, cancelled]
- *                 example: confirmed
- *                 description: |
- *                   Reservation status flow:
- *                   on_hold → confirmed → sitting → ended
- *                   Any status → cancelled
+ *                 description: New reservation status
+ *           examples:
+ *             confirm:
+ *               summary: Confirm the reservation
+ *               value:
+ *                 status: "confirmed"
+ *             seat:
+ *               summary: Customer arrived — mark as sitting
+ *               value:
+ *                 status: "sitting"
+ *             end:
+ *               summary: Reservation completed
+ *               value:
+ *                 status: "ended"
+ *             cancel:
+ *               summary: Cancel the reservation
+ *               value:
+ *                 status: "cancelled"
  *     responses:
  *       200:
  *         description: Reservation status updated successfully
@@ -192,14 +308,29 @@ router.post('/', verifyToken, reservationController.createReservation);
  *               properties:
  *                 reservation:
  *                   $ref: '#/components/schemas/Reservation'
- *       400:
- *         description: Validation error
+ *             example:
+ *               reservation:
+ *                 _id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *                 customerName: "Ahmed Said"
+ *                 phone: "01012345678"
+ *                 numberOfPeople: 4
+ *                 date: "2026-06-28T00:00:00.000Z"
+ *                 time: "19:00"
+ *                 tableId: "64f1a2b3c4d5e6f7a8b9c0d2"
+ *                 status: "confirmed"
+ *                 createdAt: "2026-06-28T10:00:00.000Z"
+ *                 updatedAt: "2026-06-28T11:00:00.000Z"
+ *                 __v: 0
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden — requires ADMIN or MANAGER role
  *       404:
  *         description: Reservation not found
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Reservation not found"
  */
 router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), reservationController.updateReservationStatus);
 
@@ -207,7 +338,16 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), reservati
  * @swagger
  * /reservations/{id}:
  *   delete:
- *     summary: Delete a reservation
+ *     summary: Permanently delete a reservation
+ *     description: |
+ *       Permanently removes the reservation from the database.
+ *
+ *       **Response format:**
+ *       ```json
+ *       { "message": "Reservation deleted" }
+ *       ```
+ *
+ *       **Roles required:** ADMIN or MANAGER
  *     tags: [Reservations]
  *     security:
  *       - bearerAuth: []
@@ -224,18 +364,18 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), reservati
  *         description: Reservation deleted successfully
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Reservation deleted
+ *             example:
+ *               message: "Reservation deleted"
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden — requires ADMIN or MANAGER role
  *       404:
  *         description: Reservation not found
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Reservation not found"
  */
 router.delete('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), reservationController.deleteReservation);
 

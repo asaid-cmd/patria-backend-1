@@ -5,59 +5,137 @@ const swaggerOptions = {
       title: 'Patria Coffee & Beans — Full API',
       version: '2.0.0',
       description: `
-## API Documentation — 3 Applications
+# Patria Coffee & Beans — API Documentation
 
-**Response format:** All responses are **flat JSON** — same format as ERB. No wrapper object.
+> **Base URL (Dashboard):** \`https://api.patriacoffeebeans.com/api\`
+> **Base URL (Mobile App):** \`https://api.patriacoffeebeans.com/api/mobile\`
+> **Base URL (Driver App):** \`https://api.patriacoffeebeans.com/api/driver\`
 
 ---
 
-### Success Response
-Returns the data object directly:
-\`\`\`json
-{ "_id": "...", "name": "Ahmed", "token": "eyJ..." }
+## 🔐 Authentication
+
+All protected dashboard endpoints require a Bearer token in the Authorization header:
 \`\`\`
-Or a message when there is no data:
+Authorization: Bearer <accessToken>
+\`\`\`
+
+**Token Flow:**
+1. Call \`POST /auth/admin/login\` → receive \`accessToken\` (15 min) + \`refreshToken\` (7 days)
+2. Attach \`accessToken\` to every request header
+3. When you get a 401, call \`POST /auth/refresh\` with the \`refreshToken\` to get a new \`accessToken\`
+4. The dashboard axios interceptor handles token refresh automatically
+
+---
+
+## 📦 Response Format — Dashboard
+
+### Standard Success (create / update / list)
+Responses return the data **directly** (flat JSON):
 \`\`\`json
-{ "message": "تم الحذف بنجاح" }
+{ "location": { "_id": "...", "name": "Maadi", "deliveryFee": 20, ... } }
+\`\`\`
+
+### Delete Success
+When there is no data to return:
+\`\`\`json
+{ "message": "Delivery zone deleted" }
+\`\`\`
+
+### Refresh Token — Special Format ⚠️
+The \`POST /auth/refresh\` endpoint returns a **wrapped** response (required by the axios interceptor):
+\`\`\`json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Token refreshed successfully",
+  "data": {
+    "accessToken": "eyJ...",
+    "refreshToken": "eyJ..."
+  }
+}
 \`\`\`
 
 ### Error Response
 \`\`\`json
-{ "message": "رقم الهاتف مستخدم بالفعل" }
+{ "message": "Invalid credentials" }
 \`\`\`
 
 ---
 
-### Dashboard (Admin / POS / Kitchen)
-Base: \`/api/*\`
+## 👤 Staff Roles
 
-Staff roles: SUPER_ADMIN, ADMIN, MANAGER, CASHIER, KITCHEN, STAFF.
-Login with **email + password** — returns flat user object with \`token\`.
-
-Key paths: \`/api/auth/admin/login\`, \`/api/orders\`, \`/api/products\`, \`/api/logistics/*\`, \`/api/reports/*\`
-
----
-
-### Customer Mobile App
-Base: \`/api/mobile/*\`
-
-Login with **phone + password** — returns \`{ _id, name, phone, role, loyaltyPoints, tier, token }\`.
-
-Key paths: \`/api/mobile/auth/login\`, \`/api/mobile/cart\`, \`/api/mobile/orders\`, \`/api/mobile/offers\`, \`/api/mobile/zones\`
+| Role | Value | Access |
+|------|-------|--------|
+| Super Admin | \`superadmin\` | Full access |
+| Admin | \`admin\` | User & content management |
+| Manager | \`manager\` | Staff & reports |
+| Cashier | \`cashier\` | Orders & shifts |
+| Kitchen | \`kitchen\` | Order preparation |
+| Staff | \`staff\` | Limited access |
 
 ---
 
-### Driver Mobile App
-Base: \`/api/driver/*\` or \`/api/drivers/*\` (both work)
+## 📋 Dashboard Endpoints Summary
 
-Login with **phone + password** — returns \`{ _id, name, phone, vehicleType, status, token }\`.
+### Auth (Dashboard)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /auth/admin/register | ❌ | Create first admin account |
+| POST | /auth/admin/login | ❌ | Login with email + password |
+| POST | /auth/refresh | ❌ | Get new access token |
+| POST | /auth/logout | ✅ | Invalidate session |
+| GET | /auth/me | ✅ | Get current user profile |
+| POST | /auth/forgot-password | ❌ | Send reset email (send \`{ email }\`) |
 
-Key paths: \`/api/driver/login\`, \`/api/driver/shift/start\`, \`/api/driver/orders\`, \`/api/driver/location\`
+### Categories
+| Method | Path | Auth | Roles | Description |
+|--------|------|------|-------|-------------|
+| GET | /categories | ✅ | All | Returns array of active categories with product counts |
+| POST | /categories | ✅ | ADMIN, MANAGER | Create new category |
+| PUT | /categories/:id | ✅ | ADMIN, MANAGER | Update or toggle category (send \`{ isActive: false }\`) |
+| DELETE | /categories/:id | ✅ | ADMIN, MANAGER | Soft delete (sets isActive = false) |
+
+### Locations (Delivery Zones)
+| Method | Path | Auth | Roles | Description |
+|--------|------|------|-------|-------------|
+| GET | /locations | ✅ | All | Get all zones + stats |
+| POST | /locations | ✅ | ADMIN, SUPER_ADMIN, MANAGER | Create zone |
+| PUT | /locations/:id | ✅ | ADMIN, SUPER_ADMIN, MANAGER | Update zone |
+| PATCH | /locations/:id/toggle | ✅ | ADMIN, SUPER_ADMIN, MANAGER | Toggle active status |
+| DELETE | /locations/:id | ✅ | ADMIN, SUPER_ADMIN | Delete zone |
+
+### Tables
+| Method | Path | Auth | Roles | Description |
+|--------|------|------|-------|-------------|
+| GET | /tables | ✅ | All | Paginated list of tables |
+| POST | /tables | ✅ | ADMIN, MANAGER | Create table |
+| PUT | /tables/:id | ✅ | ADMIN, MANAGER, CASHIER | Update table status |
+| DELETE | /tables/:id | ✅ | ADMIN, MANAGER | Delete table |
+
+### Reservations
+| Method | Path | Auth | Roles | Description |
+|--------|------|------|-------|-------------|
+| GET | /reservations | ✅ | All | Paginated list, filter by \`?date=YYYY-MM-DD\` |
+| POST | /reservations | ✅ | All | Create reservation |
+| PUT | /reservations/:id | ✅ | ADMIN, MANAGER | Update reservation status |
+| DELETE | /reservations/:id | ✅ | ADMIN, MANAGER | Delete reservation |
 
 ---
 
-### Authentication Header
-All protected endpoints require: \`Authorization: Bearer {token}\`
+## 📱 Customer Mobile App (/api/mobile/*)
+
+Login with **phone + password** → returns \`{ _id, name, phone, role, token, loyaltyPoints, tier }\`
+
+Key paths: \`/mobile/auth/login\`, \`/mobile/cart\`, \`/mobile/orders\`, \`/mobile/offers\`, \`/mobile/zones\`
+
+---
+
+## 🚗 Driver Mobile App (/api/driver/*)
+
+Login with **phone + password** → returns \`{ _id, name, phone, vehicleType, status, token }\`
+
+Key paths: \`/driver/login\`, \`/driver/shift/start\`, \`/driver/orders\`, \`/driver/location\`
       `,
     },
     servers: [

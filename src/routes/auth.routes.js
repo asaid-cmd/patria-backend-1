@@ -18,15 +18,26 @@ const verifyCustomer = (req, res, next) => {
 /**
  * @swagger
  * tags:
- *   name: Auth
- *   description: Customer mobile app — phone-based authentication
+ *   name: Auth — Dashboard
+ *   description: |
+ *     Staff/Admin authentication for the management dashboard.
+ *
+ *     **Login Flow:**
+ *     1. `POST /auth/admin/login` → receive `accessToken` (15 min) + `refreshToken` (7 days)
+ *     2. Add `Authorization: Bearer <accessToken>` header to every request
+ *     3. When `accessToken` expires (401 response), call `POST /auth/refresh`
+ *     4. The dashboard axios interceptor handles this automatically
+ *
+ *     **⚠️ Important:** `POST /auth/refresh` returns a **wrapped** response format (required by axios interceptor):
+ *     `{ statusCode, success, message, data: { accessToken, refreshToken } }`
+ *     All other auth endpoints return flat JSON.
  */
 
 /**
  * @swagger
  * tags:
- *   name: Auth — Dashboard
- *   description: Staff/Admin email-based login for the management dashboard
+ *   name: Auth
+ *   description: Customer mobile app — phone-based authentication
  */
 
 // ─── Dashboard (Admin/Staff) Auth ────────────────────────────────────────────
@@ -35,7 +46,21 @@ const verifyCustomer = (req, res, next) => {
  * @swagger
  * /auth/admin/register:
  *   post:
- *     summary: Register admin/staff user
+ *     summary: Register the first admin/staff account
+ *     description: |
+ *       Creates a new staff user with `superadmin` role. Use this to create the first admin account.
+ *
+ *       **Response format (flat):**
+ *       ```json
+ *       {
+ *         "user": { "_id": "...", "name": "...", "email": "...", "role": "superadmin", ... },
+ *         "accessToken": "eyJ...",
+ *         "refreshToken": "eyJ...",
+ *         "message": "Registered successfully"
+ *       }
+ *       ```
+ *
+ *       > ⚠️ No authentication required for this endpoint.
  *     tags: [Auth — Dashboard]
  *     requestBody:
  *       required: true
@@ -47,35 +72,49 @@ const verifyCustomer = (req, res, next) => {
  *             properties:
  *               name:
  *                 type: string
- *                 example: Ahmed Admin
+ *                 example: "Ahmed Admin"
  *               email:
  *                 type: string
- *                 example: admin@patria.com
+ *                 format: email
+ *                 example: "admin@patria.com"
  *               password:
  *                 type: string
- *                 example: password123
+ *                 minLength: 6
+ *                 example: "password123"
+ *           example:
+ *             name: "Ahmed Admin"
+ *             email: "admin@patria.com"
+ *             password: "password123"
  *     responses:
  *       201:
- *         description: Staff user created — returns tokens and user
+ *         description: Admin registered — returns tokens + user object
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   $ref: '#/components/schemas/StaffUser'
- *                 accessToken:
- *                   type: string
- *                   description: JWT access token (15 min expiry)
- *                 refreshToken:
- *                   type: string
- *                   description: JWT refresh token (7 day expiry)
+ *             example:
+ *               user:
+ *                 _id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *                 name: "Ahmed Admin"
+ *                 email: "admin@patria.com"
+ *                 role: "superadmin"
+ *                 isActive: true
+ *                 createdAt: "2026-06-28T10:00:00.000Z"
+ *                 updatedAt: "2026-06-28T10:00:00.000Z"
+ *                 __v: 0
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               message: "Registered successfully"
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "\"email\" must be a valid email"
  *       409:
  *         description: Email already registered
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Email already registered"
  */
 router.post('/admin/register', authController.register);
 
@@ -83,7 +122,25 @@ router.post('/admin/register', authController.register);
  * @swagger
  * /auth/admin/login:
  *   post:
- *     summary: Staff login with email + password
+ *     summary: Login with email + password (Dashboard)
+ *     description: |
+ *       Authenticates a staff user and returns an access token + refresh token.
+ *
+ *       **Response format (flat):**
+ *       ```json
+ *       {
+ *         "user": { "_id": "...", "name": "...", "email": "...", "role": "admin", "isActive": true, "lastLogin": "...", ... },
+ *         "accessToken": "eyJ...",
+ *         "refreshToken": "eyJ...",
+ *         "message": "Login successful"
+ *       }
+ *       ```
+ *
+ *       **Store tokens and use:**
+ *       - `accessToken` → `Authorization: Bearer <accessToken>` header
+ *       - `refreshToken` → call `POST /auth/refresh` when access token expires
+ *
+ *       > ⚠️ No authentication required for this endpoint.
  *     tags: [Auth — Dashboard]
  *     requestBody:
  *       required: true
@@ -95,33 +152,45 @@ router.post('/admin/register', authController.register);
  *             properties:
  *               email:
  *                 type: string
- *                 example: admin@patria.com
+ *                 format: email
+ *                 example: "admin@patria.com"
  *               password:
  *                 type: string
- *                 example: password123
+ *                 example: "password123"
+ *           example:
+ *             email: "admin@patria.com"
+ *             password: "password123"
  *     responses:
  *       200:
  *         description: Login successful — returns accessToken + refreshToken + user
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   $ref: '#/components/schemas/StaffUser'
- *                 accessToken:
- *                   type: string
- *                   description: JWT access token (15 min expiry)
- *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                 refreshToken:
- *                   type: string
- *                   description: JWT refresh token (7 day expiry)
+ *             example:
+ *               user:
+ *                 _id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *                 name: "Ahmed Admin"
+ *                 email: "admin@patria.com"
+ *                 role: "admin"
+ *                 isActive: true
+ *                 lastLogin: "2026-06-28T10:00:00.000Z"
+ *                 createdAt: "2026-01-01T00:00:00.000Z"
+ *                 updatedAt: "2026-06-28T10:00:00.000Z"
+ *                 __v: 0
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               message: "Login successful"
+ *       400:
+ *         description: Validation error — missing fields
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "\"email\" must be a valid email"
  *       401:
  *         description: Invalid credentials
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Invalid credentials"
  */
 router.post('/admin/login', authController.login);
 
@@ -129,7 +198,27 @@ router.post('/admin/login', authController.login);
  * @swagger
  * /auth/refresh:
  *   post:
- *     summary: Refresh access token using refresh token
+ *     summary: Get a new access token using the refresh token
+ *     description: |
+ *       Exchanges a valid `refreshToken` for a new `accessToken` and `refreshToken`.
+ *
+ *       **⚠️ Special wrapped response format** (required by the dashboard axios interceptor):
+ *       ```json
+ *       {
+ *         "statusCode": 200,
+ *         "success": true,
+ *         "message": "Token refreshed successfully",
+ *         "data": {
+ *           "accessToken": "eyJ...",
+ *           "refreshToken": "eyJ..."
+ *         }
+ *       }
+ *       ```
+ *
+ *       > This is the **only** endpoint that returns a wrapped response format.
+ *       > All other endpoints return flat JSON.
+ *
+ *       > ⚠️ No authentication required for this endpoint.
  *     tags: [Auth — Dashboard]
  *     requestBody:
  *       required: true
@@ -141,37 +230,36 @@ router.post('/admin/login', authController.login);
  *             properties:
  *               refreshToken:
  *                 type: string
- *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 description: The refresh token received from login
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *           example:
+ *             refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *     responses:
  *       200:
- *         description: New access token issued
+ *         description: New tokens issued successfully (wrapped format)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 statusCode:
- *                   type: integer
- *                   example: 200
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Token refreshed successfully
- *                 data:
- *                   type: object
- *                   properties:
- *                     accessToken:
- *                       type: string
- *                     refreshToken:
- *                       type: string
+ *               $ref: '#/components/schemas/RefreshTokenResponse'
+ *             example:
+ *               statusCode: 200
+ *               success: true
+ *               message: "Token refreshed successfully"
+ *               data:
+ *                 accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *       400:
+ *         description: Refresh token missing
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Refresh token required"
  *       401:
  *         description: Invalid or expired refresh token
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Invalid refresh token"
  */
 router.post('/refresh', authController.refreshToken);
 
@@ -179,7 +267,16 @@ router.post('/refresh', authController.refreshToken);
  * @swagger
  * /auth/logout:
  *   post:
- *     summary: Logout and invalidate refresh token
+ *     summary: Logout and invalidate the current session
+ *     description: |
+ *       Invalidates the current refresh token. The client should also clear stored tokens.
+ *
+ *       **Response format:**
+ *       ```json
+ *       { "message": "Logged out successfully" }
+ *       ```
+ *
+ *       **Requires:** `Authorization: Bearer <accessToken>`
  *     tags: [Auth — Dashboard]
  *     security:
  *       - bearerAuth: []
@@ -188,12 +285,10 @@ router.post('/refresh', authController.refreshToken);
  *         description: Logged out successfully
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Logged out successfully
+ *             example:
+ *               message: "Logged out successfully"
+ *       401:
+ *         description: Unauthorized — missing or invalid token
  */
 router.post('/logout', verifyToken, authController.logout);
 
@@ -202,22 +297,53 @@ router.post('/logout', verifyToken, authController.logout);
  * /auth/me:
  *   get:
  *     summary: Get current authenticated staff user profile
+ *     description: |
+ *       Returns the full profile of the currently logged-in staff user.
+ *
+ *       **Response format (flat — returns user object directly):**
+ *       ```json
+ *       {
+ *         "_id": "...",
+ *         "name": "Ahmed Admin",
+ *         "email": "admin@patria.com",
+ *         "role": "admin",
+ *         "isActive": true,
+ *         "lastLogin": "2026-06-28T10:00:00.000Z",
+ *         "createdAt": "...",
+ *         "updatedAt": "...",
+ *         "__v": 0
+ *       }
+ *       ```
+ *
+ *       **Requires:** `Authorization: Bearer <accessToken>`
  *     tags: [Auth — Dashboard]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Current user data
+ *         description: Current user profile (flat user object)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/StaffUser'
+ *             example:
+ *               _id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *               name: "Ahmed Admin"
+ *               email: "admin@patria.com"
+ *               role: "admin"
+ *               isActive: true
+ *               lastLogin: "2026-06-28T10:00:00.000Z"
+ *               createdAt: "2026-01-01T00:00:00.000Z"
+ *               updatedAt: "2026-06-28T10:00:00.000Z"
+ *               __v: 0
  *       401:
  *         description: Unauthorized — missing or invalid token
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               message: "Unauthorized"
+ *       404:
+ *         description: User not found
  */
 router.get('/me', verifyToken, authController.me);
 
@@ -225,7 +351,20 @@ router.get('/me', verifyToken, authController.me);
  * @swagger
  * /auth/forgot-password:
  *   post:
- *     summary: Send password reset — email (admin) or OTP (customer)
+ *     summary: Request a password reset
+ *     description: |
+ *       **For Dashboard (Admin):** Send `{ "email": "admin@patria.com" }`
+ *       → Backend sends a password reset email (or returns a success message regardless).
+ *
+ *       **For Mobile App (Customer):** Send `{ "phone": "01012345678" }`
+ *       → Backend sends an OTP SMS.
+ *
+ *       **Response format:**
+ *       ```json
+ *       { "message": "If email exists, password reset link sent" }
+ *       ```
+ *
+ *       > ⚠️ Always returns 200 even if the email/phone does not exist (security measure).
  *     tags: [Auth — Dashboard]
  *     requestBody:
  *       required: true
@@ -233,31 +372,35 @@ router.get('/me', verifyToken, authController.me);
  *         application/json:
  *           schema:
  *             oneOf:
- *               - title: Admin (email)
+ *               - title: Admin (email-based)
  *                 type: object
- *                 required: [email]
  *                 properties:
  *                   email:
  *                     type: string
- *                     example: admin@patria.com
- *               - title: Customer (phone)
+ *                     format: email
+ *                     example: "admin@patria.com"
+ *               - title: Customer (phone-based)
  *                 type: object
- *                 required: [phone]
  *                 properties:
  *                   phone:
  *                     type: string
  *                     example: "01012345678"
+ *           examples:
+ *             admin_email:
+ *               summary: Dashboard admin reset
+ *               value:
+ *                 email: "admin@patria.com"
+ *             customer_phone:
+ *               summary: Mobile customer reset
+ *               value:
+ *                 phone: "01012345678"
  *     responses:
  *       200:
- *         description: Reset link / OTP sent
+ *         description: Reset request accepted (always 200 for security)
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: If email exists, password reset link sent
+ *             example:
+ *               message: "If email exists, password reset link sent"
  */
 router.post('/forgot-password', (req, res, next) => {
   if (req.body.email && !req.body.phone) {

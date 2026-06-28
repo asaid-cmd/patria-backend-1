@@ -42,7 +42,7 @@ const router = express.Router();
  *     description: |
  *       Returns all active products. Supports filtering by category and search.
  *
- *       **Response format (ERB-compatible):**
+ *       **Response format:**
  *       ```json
  *       {
  *         "products": [ { ...product objects... } ],

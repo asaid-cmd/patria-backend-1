@@ -1,5 +1,5 @@
 /**
- * API Response helpers — ERB-compatible flat JSON format.
+ * API Response helpers — flat JSON format (no wrapper).
  *
  * sendSuccess: returns the data object directly (no wrapper).
  *   If data is null/undefined and message is provided, returns { message }.

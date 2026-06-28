@@ -7,135 +7,148 @@ const swaggerOptions = {
       description: `
 # Patria Coffee & Beans — API Documentation
 
-> **Base URL (Dashboard):** \`https://api.patriacoffeebeans.com/api\`
-> **Base URL (Mobile App):** \`https://api.patriacoffeebeans.com/api/mobile\`
-> **Base URL (Driver App):** \`https://api.patriacoffeebeans.com/api/driver\`
+**Base URL (Dashboard):** \`https://api.patriacoffeebeans.com/api\`
+
+**Base URL (Mobile App):** \`https://api.patriacoffeebeans.com/api/mobile\`
+
+**Base URL (Driver App):** \`https://api.patriacoffeebeans.com/api/driver\`
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
-All protected dashboard endpoints require a Bearer token in the Authorization header:
+All protected endpoints require a Bearer token in the Authorization header:
+
 \`\`\`
 Authorization: Bearer <accessToken>
 \`\`\`
 
-**Token Flow:**
-1. Call \`POST /auth/admin/login\` → receive \`accessToken\` (15 min) + \`refreshToken\` (7 days)
-2. Attach \`accessToken\` to every request header
-3. When you get a 401, call \`POST /auth/refresh\` with the \`refreshToken\` to get a new \`accessToken\`
-4. The dashboard axios interceptor handles token refresh automatically
+**How to get a token:**
+1. Call \`POST /auth/admin/login\` with \`{ email, password }\`
+2. You receive \`accessToken\` (valid 15 min) + \`refreshToken\` (valid 7 days)
+3. When the access token expires (401 response), call \`POST /auth/refresh\` with the refresh token to get a new one
 
 ---
 
-## 📦 Response Format — Dashboard
+## Response Format
 
-### Standard Success (create / update / list)
-Responses return the data **directly** (flat JSON):
+### Success — returns data directly:
 \`\`\`json
-{ "location": { "_id": "...", "name": "Maadi", "deliveryFee": 20, ... } }
+{ "location": { "_id": "...", "name": "Downtown", "deliveryFee": 15 } }
 \`\`\`
 
-### Delete Success
-When there is no data to return:
+### Success — paginated list:
 \`\`\`json
-{ "message": "Delivery zone deleted" }
+{
+  "data": [ {...}, {...} ],
+  "pagination": { "total": 25, "page": 1, "limit": 10, "totalPages": 3, "hasNextPage": true, "hasPrevPage": false }
+}
 \`\`\`
 
-### Refresh Token — Special Format ⚠️
-The \`POST /auth/refresh\` endpoint returns a **wrapped** response (required by the axios interceptor):
+### Success — delete (no data):
+\`\`\`json
+{ "message": "Item deleted" }
+\`\`\`
+
+### POST /auth/refresh — special wrapped format:
 \`\`\`json
 {
   "statusCode": 200,
   "success": true,
   "message": "Token refreshed successfully",
-  "data": {
-    "accessToken": "eyJ...",
-    "refreshToken": "eyJ..."
-  }
+  "data": { "accessToken": "eyJ...", "refreshToken": "eyJ..." }
 }
 \`\`\`
 
-### Error Response
+### Error:
 \`\`\`json
 { "message": "Invalid credentials" }
 \`\`\`
 
 ---
 
-## 👤 Staff Roles
+## Staff Roles
 
-| Role | Value | Access |
-|------|-------|--------|
-| Super Admin | \`superadmin\` | Full access |
-| Admin | \`admin\` | User & content management |
-| Manager | \`manager\` | Staff & reports |
-| Cashier | \`cashier\` | Orders & shifts |
-| Kitchen | \`kitchen\` | Order preparation |
-| Staff | \`staff\` | Limited access |
+| Role | Value | Permissions |
+|------|-------|-------------|
+| Super Admin | \`superadmin\` | Full access to everything |
+| Admin | \`admin\` | Users, content, settings |
+| Manager | \`manager\` | Staff, reports, operations |
+| Cashier | \`cashier\` | Orders and POS shifts |
+| Kitchen | \`kitchen\` | View and update order status |
+| Staff | \`staff\` | Limited read-only access |
 
 ---
 
-## 📋 Dashboard Endpoints Summary
+## Dashboard Endpoints
 
-### Auth (Dashboard)
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | /auth/admin/register | ❌ | Create first admin account |
-| POST | /auth/admin/login | ❌ | Login with email + password |
-| POST | /auth/refresh | ❌ | Get new access token |
-| POST | /auth/logout | ✅ | Invalidate session |
-| GET | /auth/me | ✅ | Get current user profile |
-| POST | /auth/forgot-password | ❌ | Send reset email (send \`{ email }\`) |
+### Auth
+| Method | Path | Requires Token | Description |
+|--------|------|----------------|-------------|
+| POST | /auth/admin/register | No | Create admin account |
+| POST | /auth/admin/login | No | Login — returns accessToken + refreshToken |
+| POST | /auth/refresh | No | Refresh expired access token |
+| POST | /auth/logout | Yes | Logout current session |
+| GET | /auth/me | Yes | Get current logged-in user |
+| POST | /auth/forgot-password | No | Send password reset email — body: \`{ email }\` |
 
 ### Categories
-| Method | Path | Auth | Roles | Description |
-|--------|------|------|-------|-------------|
-| GET | /categories | ✅ | All | Returns array of active categories with product counts |
-| POST | /categories | ✅ | ADMIN, MANAGER | Create new category |
-| PUT | /categories/:id | ✅ | ADMIN, MANAGER | Update or toggle category (send \`{ isActive: false }\`) |
-| DELETE | /categories/:id | ✅ | ADMIN, MANAGER | Soft delete (sets isActive = false) |
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| GET | /categories | All | Returns direct array of active categories with product counts |
+| POST | /categories | ADMIN, MANAGER | Create category |
+| PUT | /categories/:id | ADMIN, MANAGER | Update category (name, order, isActive, icon) |
+| DELETE | /categories/:id | ADMIN, MANAGER | Soft delete — sets isActive = false |
 
 ### Locations (Delivery Zones)
-| Method | Path | Auth | Roles | Description |
-|--------|------|------|-------|-------------|
-| GET | /locations | ✅ | All | Get all zones + stats |
-| POST | /locations | ✅ | ADMIN, SUPER_ADMIN, MANAGER | Create zone |
-| PUT | /locations/:id | ✅ | ADMIN, SUPER_ADMIN, MANAGER | Update zone |
-| PATCH | /locations/:id/toggle | ✅ | ADMIN, SUPER_ADMIN, MANAGER | Toggle active status |
-| DELETE | /locations/:id | ✅ | ADMIN, SUPER_ADMIN | Delete zone |
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| GET | /locations | All | Get all zones + stats (total, active, inactive) |
+| POST | /locations | ADMIN, MANAGER | Create delivery zone |
+| PUT | /locations/:id | ADMIN, MANAGER | Update zone details |
+| PATCH | /locations/:id/toggle | ADMIN, MANAGER | Toggle zone on/off — body: \`{ isActive: false }\` |
+| DELETE | /locations/:id | ADMIN | Delete zone permanently |
+
+### Products
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| GET | /products | All | Paginated products list with variantGroups + extras |
+| GET | /products/:id | All | Single product details |
+| POST | /products | ADMIN, MANAGER | Create product — use multipart/form-data for images |
+| PUT | /products/:id | ADMIN, MANAGER | Update product |
+| DELETE | /products/:id | ADMIN, MANAGER | Soft delete — sets isActive = false |
 
 ### Tables
-| Method | Path | Auth | Roles | Description |
-|--------|------|------|-------|-------------|
-| GET | /tables | ✅ | All | Paginated list of tables |
-| POST | /tables | ✅ | ADMIN, MANAGER | Create table |
-| PUT | /tables/:id | ✅ | ADMIN, MANAGER, CASHIER | Update table status |
-| DELETE | /tables/:id | ✅ | ADMIN, MANAGER | Delete table |
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| GET | /tables | All | Paginated list of dining tables |
+| POST | /tables | ADMIN, MANAGER | Create table |
+| PUT | /tables/:id | ADMIN, MANAGER, CASHIER | Update table status (available / occupied) |
+| DELETE | /tables/:id | ADMIN, MANAGER | Delete table permanently |
 
 ### Reservations
-| Method | Path | Auth | Roles | Description |
-|--------|------|------|-------|-------------|
-| GET | /reservations | ✅ | All | Paginated list, filter by \`?date=YYYY-MM-DD\` |
-| POST | /reservations | ✅ | All | Create reservation |
-| PUT | /reservations/:id | ✅ | ADMIN, MANAGER | Update reservation status |
-| DELETE | /reservations/:id | ✅ | ADMIN, MANAGER | Delete reservation |
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| GET | /reservations | All | Paginated list — filter by \`?date=YYYY-MM-DD\` or \`?status=on_hold\` |
+| POST | /reservations | All | Create reservation |
+| PUT | /reservations/:id | ADMIN, MANAGER | Update status (on_hold → confirmed → sitting → ended) |
+| DELETE | /reservations/:id | ADMIN, MANAGER | Delete reservation |
 
 ---
 
-## 📱 Customer Mobile App (/api/mobile/*)
+## Customer Mobile App (/api/mobile/*)
 
-Login with **phone + password** → returns \`{ _id, name, phone, role, token, loyaltyPoints, tier }\`
+Login: \`POST /mobile/auth/login\` with phone + password
 
-Key paths: \`/mobile/auth/login\`, \`/mobile/cart\`, \`/mobile/orders\`, \`/mobile/offers\`, \`/mobile/zones\`
+Key endpoints: \`/mobile/products\`, \`/mobile/categories\`, \`/mobile/cart\`, \`/mobile/orders\`, \`/mobile/offers\`, \`/mobile/zones\`
 
 ---
 
-## 🚗 Driver Mobile App (/api/driver/*)
+## Driver App (/api/driver/*)
 
-Login with **phone + password** → returns \`{ _id, name, phone, vehicleType, status, token }\`
+Login: \`POST /drivers/login\` with phone + password
 
-Key paths: \`/driver/login\`, \`/driver/shift/start\`, \`/driver/orders\`, \`/driver/location\`
+Key endpoints: \`/driver/shift/start\`, \`/driver/orders\`, \`/driver/location\`
       `,
     },
     servers: [
@@ -239,7 +252,7 @@ Key paths: \`/driver/login\`, \`/driver/shift/start\`, \`/driver/orders\`, \`/dr
         // ─── Dashboard — Categories ───────────────────────────────────────────
         CategoryItem: {
           type: 'object',
-          description: 'Category item as returned by GET /categories (ERB format — direct array)',
+          description: 'Category item as returned by GET /categories (Direct array — no wrapper object)',
           properties: {
             _id:           { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d1' },
             name:          { type: 'string', example: 'Coffee' },
@@ -422,7 +435,7 @@ Key paths: \`/driver/login\`, \`/driver/shift/start\`, \`/driver/orders\`, \`/dr
 
         ProductFull: {
           type: 'object',
-          description: 'المنتج كما يُرجعه GET /products — الـ shape الكامل (ERB-compatible)',
+          description: 'المنتج كما يُرجعه GET /products — الـ shape الكامل المُرجع من GET /products',
           properties: {
             _id:         { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d5' },
             id:          { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d5' },

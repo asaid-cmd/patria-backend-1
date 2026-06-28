@@ -61,8 +61,8 @@ router.get('/', categoryController.getCategories);
  * @swagger
  * /categories/with-counts:
  *   get:
- *     summary: Get all categories with product counts (ERB alias)
- *     description: Same as `GET /categories` — provided for ERB mobile app compatibility.
+ *     summary: Get all categories with product counts (alias)
+ *     description: Same as `GET /categories` — provided for mobile app compatibility.
  *     tags: [Categories]
  *     responses:
  *       200:

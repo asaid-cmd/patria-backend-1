@@ -116,7 +116,13 @@ exports.refreshToken = async (req, res) => {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
 
-    sendSuccess(res, { accessToken, refreshToken: newRefreshToken });
+    // Dashboard interceptor expects response.data.data.accessToken
+    res.status(200).json({
+      statusCode: 200,
+      success: true,
+      message: 'Token refreshed successfully',
+      data: { accessToken, refreshToken: newRefreshToken },
+    });
   } catch (error) {
     sendError(res, 'Invalid refresh token', 401, error);
   }

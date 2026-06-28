@@ -9,20 +9,47 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Locations
- *   description: Branch and location management
+ *   description: Delivery zone management (Dashboard). Each location is a delivery area with a fee and minimum order.
  */
 
 /**
  * @swagger
  * /locations:
  *   get:
- *     summary: Get all locations
+ *     summary: Get all delivery zones with stats
  *     tags: [Locations]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of locations retrieved successfully
+ *         description: List of delivery zones + stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 locations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/DeliveryZone'
+ *                 stats:
+ *                   $ref: '#/components/schemas/LocationStats'
+ *             example:
+ *               locations:
+ *                 - _id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *                   id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *                   name: Downtown
+ *                   deliveryFee: 15
+ *                   minOrderAmount: 50
+ *                   isActive: true
+ *                   status: Active
+ *                   createdAt: "2026-01-01T00:00:00.000Z"
+ *                   updatedAt: "2026-01-01T00:00:00.000Z"
+ *                   __v: 0
+ *               stats:
+ *                 total: 5
+ *                 active: 4
+ *                 inactive: 1
  *       401:
  *         description: Unauthorized
  */
@@ -32,7 +59,7 @@ router.get('/', verifyToken, locationController.getLocations);
  * @swagger
  * /locations:
  *   post:
- *     summary: Create a new location
+ *     summary: Create a new delivery zone
  *     tags: [Locations]
  *     security:
  *       - bearerAuth: []
@@ -42,29 +69,41 @@ router.get('/', verifyToken, locationController.getLocations);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - address
+ *             required: [name]
  *             properties:
  *               name:
  *                 type: string
- *               address:
- *                 type: string
- *               phone:
- *                 type: string
- *               email:
- *                 type: string
+ *                 example: Maadi
+ *               deliveryFee:
+ *                 type: number
+ *                 example: 20
+ *                 description: Delivery fee in EGP
+ *               minOrderAmount:
+ *                 type: number
+ *                 example: 100
+ *                 description: Minimum order amount in EGP
  *               isActive:
  *                 type: boolean
+ *                 example: true
  *     responses:
  *       201:
- *         description: Location created successfully
+ *         description: Delivery zone created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 location:
+ *                   $ref: '#/components/schemas/DeliveryZone'
+ *                 message:
+ *                   type: string
+ *                   example: Delivery zone created
  *       400:
  *         description: Validation error
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - requires ADMIN, SUPER_ADMIN, or MANAGER role
+ *         description: Forbidden — requires ADMIN, SUPER_ADMIN, or MANAGER role
  */
 router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.MANAGER), locationController.createLocation);
 
@@ -72,7 +111,7 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.MA
  * @swagger
  * /locations/{id}:
  *   put:
- *     summary: Update a location
+ *     summary: Update a delivery zone
  *     tags: [Locations]
  *     security:
  *       - bearerAuth: []
@@ -82,7 +121,8 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.MA
  *         required: true
  *         schema:
  *           type: string
- *         description: Location ID
+ *         description: Delivery zone MongoDB ObjectId
+ *         example: "64f1a2b3c4d5e6f7a8b9c0d1"
  *     requestBody:
  *       required: true
  *       content:
@@ -92,21 +132,32 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.MA
  *             properties:
  *               name:
  *                 type: string
- *               address:
- *                 type: string
- *               phone:
- *                 type: string
- *               email:
- *                 type: string
+ *                 example: Maadi Updated
+ *               deliveryFee:
+ *                 type: number
+ *                 example: 25
+ *               minOrderAmount:
+ *                 type: number
+ *                 example: 120
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
- *         description: Location updated successfully
+ *         description: Delivery zone updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 location:
+ *                   $ref: '#/components/schemas/DeliveryZone'
  *       400:
  *         description: Validation error
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - requires ADMIN, SUPER_ADMIN, or MANAGER role
+ *         description: Forbidden — requires ADMIN, SUPER_ADMIN, or MANAGER role
  *       404:
  *         description: Location not found
  */
@@ -116,7 +167,10 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.
  * @swagger
  * /locations/{id}/toggle:
  *   patch:
- *     summary: Toggle location active status
+ *     summary: Toggle delivery zone active/inactive status
+ *     description: |
+ *       Pass `{ "isActive": true }` to activate or `{ "isActive": false }` to deactivate.
+ *       If `isActive` is omitted, the status is flipped (toggled).
  *     tags: [Locations]
  *     security:
  *       - bearerAuth: []
@@ -126,14 +180,36 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.
  *         required: true
  *         schema:
  *           type: string
- *         description: Location ID
+ *         description: Delivery zone MongoDB ObjectId
+ *         example: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *                 example: false
+ *                 description: Explicit target state. Omit to auto-toggle.
  *     responses:
  *       200:
- *         description: Location status toggled successfully
+ *         description: Status toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 location:
+ *                   $ref: '#/components/schemas/DeliveryZone'
+ *                 message:
+ *                   type: string
+ *                   example: Status updated
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - requires ADMIN, SUPER_ADMIN, or MANAGER role
+ *         description: Forbidden — requires ADMIN, SUPER_ADMIN, or MANAGER role
  *       404:
  *         description: Location not found
  */
@@ -143,7 +219,7 @@ router.patch('/:id/toggle', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMI
  * @swagger
  * /locations/{id}:
  *   delete:
- *     summary: Delete a location
+ *     summary: Delete a delivery zone
  *     tags: [Locations]
  *     security:
  *       - bearerAuth: []
@@ -153,14 +229,23 @@ router.patch('/:id/toggle', verifyToken, authorize(ROLES.ADMIN, ROLES.SUPER_ADMI
  *         required: true
  *         schema:
  *           type: string
- *         description: Location ID
+ *         description: Delivery zone MongoDB ObjectId
+ *         example: "64f1a2b3c4d5e6f7a8b9c0d1"
  *     responses:
  *       200:
- *         description: Location deleted successfully
+ *         description: Delivery zone deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Delivery zone deleted
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - requires ADMIN or SUPER_ADMIN role
+ *         description: Forbidden — requires ADMIN or SUPER_ADMIN role
  *       404:
  *         description: Location not found
  */

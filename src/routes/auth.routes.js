@@ -24,9 +24,255 @@ const verifyCustomer = (req, res, next) => {
 
 /**
  * @swagger
+ * tags:
+ *   name: Auth — Dashboard
+ *   description: Staff/Admin email-based login for the management dashboard
+ */
+
+// ─── Dashboard (Admin/Staff) Auth ────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /auth/admin/register:
+ *   post:
+ *     summary: Register admin/staff user
+ *     tags: [Auth — Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, password]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Ahmed Admin
+ *               email:
+ *                 type: string
+ *                 example: admin@patria.com
+ *               password:
+ *                 type: string
+ *                 example: password123
+ *     responses:
+ *       201:
+ *         description: Staff user created — returns tokens and user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/StaffUser'
+ *                 accessToken:
+ *                   type: string
+ *                   description: JWT access token (15 min expiry)
+ *                 refreshToken:
+ *                   type: string
+ *                   description: JWT refresh token (7 day expiry)
+ *       409:
+ *         description: Email already registered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/admin/register', authController.register);
+
+/**
+ * @swagger
+ * /auth/admin/login:
+ *   post:
+ *     summary: Staff login with email + password
+ *     tags: [Auth — Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: admin@patria.com
+ *               password:
+ *                 type: string
+ *                 example: password123
+ *     responses:
+ *       200:
+ *         description: Login successful — returns accessToken + refreshToken + user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/StaffUser'
+ *                 accessToken:
+ *                   type: string
+ *                   description: JWT access token (15 min expiry)
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 refreshToken:
+ *                   type: string
+ *                   description: JWT refresh token (7 day expiry)
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/admin/login', authController.login);
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token using refresh token
+ *     tags: [Auth — Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *     responses:
+ *       200:
+ *         description: New access token issued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Token refreshed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *       401:
+ *         description: Invalid or expired refresh token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/refresh', authController.refreshToken);
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout and invalidate refresh token
+ *     tags: [Auth — Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully
+ */
+router.post('/logout', verifyToken, authController.logout);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current authenticated staff user profile
+ *     tags: [Auth — Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StaffUser'
+ *       401:
+ *         description: Unauthorized — missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/me', verifyToken, authController.me);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Send password reset — email (admin) or OTP (customer)
+ *     tags: [Auth — Dashboard]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - title: Admin (email)
+ *                 type: object
+ *                 required: [email]
+ *                 properties:
+ *                   email:
+ *                     type: string
+ *                     example: admin@patria.com
+ *               - title: Customer (phone)
+ *                 type: object
+ *                 required: [phone]
+ *                 properties:
+ *                   phone:
+ *                     type: string
+ *                     example: "01012345678"
+ *     responses:
+ *       200:
+ *         description: Reset link / OTP sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: If email exists, password reset link sent
+ */
+router.post('/forgot-password', (req, res, next) => {
+  if (req.body.email && !req.body.phone) {
+    return authController.forgotPassword(req, res, next);
+  }
+  return customerAuthController.forgotPassword(req, res, next);
+});
+
+// ─── Customer Mobile Auth ────────────────────────────────────────────────────
+
+/**
+ * @swagger
  * /auth/register:
  *   post:
- *     summary: Register new customer account
+ *     summary: Register new customer account (mobile app)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -101,113 +347,6 @@ router.post('/login', (req, res, next) => {
 
 /**
  * @swagger
- * tags:
- *   name: Auth — Dashboard
- *   description: Staff/Admin email-based login
- */
-
-/**
- * @swagger
- * /auth/admin/register:
- *   post:
- *     summary: Register admin/staff user
- *     tags: [Auth — Dashboard]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, email, password]
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       201:
- *         description: Staff user created
- */
-router.post('/admin/register', authController.register);
-
-/**
- * @swagger
- * /auth/admin/login:
- *   post:
- *     summary: Staff login with email
- *     tags: [Auth — Dashboard]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password]
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login successful — returns accessToken + refreshToken
- */
-router.post('/admin/login', authController.login);
-
-/**
- * @swagger
- * /auth/refresh:
- *   post:
- *     summary: Refresh access token
- *     tags: [Auth — Dashboard]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [refreshToken]
- *             properties:
- *               refreshToken:
- *                 type: string
- *     responses:
- *       200:
- *         description: New access token issued
- */
-router.post('/refresh', authController.refreshToken);
-
-/**
- * @swagger
- * /auth/logout:
- *   post:
- *     summary: Logout
- *     tags: [Auth — Dashboard]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Logged out
- */
-router.post('/logout', verifyToken, authController.logout);
-
-/**
- * @swagger
- * /auth/me:
- *   get:
- *     summary: Get current staff user
- *     tags: [Auth — Dashboard]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Current user data
- */
-router.get('/me', verifyToken, authController.me);
-
-/**
- * @swagger
  * /auth/send-verification:
  *   post:
  *     summary: Send OTP to customer phone
@@ -256,28 +395,6 @@ router.post('/send-verification', customerAuthController.sendVerification);
  *         description: Phone verified — returns token
  */
 router.post('/verify-phone', customerAuthController.verifyPhone);
-
-/**
- * @swagger
- * /auth/forgot-password:
- *   post:
- *     summary: Send OTP for password reset
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [phone]
- *             properties:
- *               phone:
- *                 type: string
- *     responses:
- *       200:
- *         description: OTP sent if phone exists
- */
-router.post('/forgot-password', customerAuthController.forgotPassword);
 
 /**
  * @swagger

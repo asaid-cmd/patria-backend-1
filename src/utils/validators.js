@@ -48,6 +48,7 @@ const validators = {
   createReservationSchema: Joi.object({
     customerName: Joi.string().required(),
     phone: Joi.string().required(),
+    customerEmail: Joi.string().email(),
     numberOfPeople: Joi.number().min(1).required(),
     date: Joi.date().required(),
     time: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
@@ -212,6 +213,7 @@ const validators = {
     manager: Joi.string(),
     deliveryFee: Joi.number().min(0).default(0),
     minOrderAmount: Joi.number().min(0).default(0),
+    isActive: Joi.boolean().default(true),
   }),
 
   updateDeliveryZoneSchema: Joi.object({

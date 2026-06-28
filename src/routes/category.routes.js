@@ -9,22 +9,38 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Categories
- *   description: Menu category management
+ *   description: Menu category management (Dashboard)
  */
 
 /**
  * @swagger
  * /categories:
  *   get:
- *     summary: Get all categories
+ *     summary: Get all active categories with product counts
  *     tags: [Categories]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of categories retrieved successfully
+ *         description: Array of categories (direct array, no wrapper)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/CategoryItem'
+ *             example:
+ *               - _id: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *                 name: Coffee
+ *                 order: 1
+ *                 isActive: true
+ *                 productsCount: 12
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/', categoryController.getCategories);
 
@@ -36,7 +52,13 @@ router.get('/', categoryController.getCategories);
  *     tags: [Categories]
  *     responses:
  *       200:
- *         description: List of categories with productsCount
+ *         description: Array of categories with productsCount
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/CategoryItem'
  */
 router.get('/with-counts', categoryController.getCategories);
 
@@ -44,7 +66,7 @@ router.get('/with-counts', categoryController.getCategories);
  * @swagger
  * /categories:
  *   post:
- *     summary: Create a new category
+ *     summary: Create a new menu category
  *     tags: [Categories]
  *     security:
  *       - bearerAuth: []
@@ -54,24 +76,42 @@ router.get('/with-counts', categoryController.getCategories);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
+ *             required: [name]
  *             properties:
  *               name:
  *                 type: string
+ *                 example: Desserts
  *               description:
  *                 type: string
- *               image:
+ *                 example: Sweet treats and pastries
+ *               icon:
  *                 type: string
+ *                 example: cake
+ *               order:
+ *                 type: integer
+ *                 example: 5
  *     responses:
  *       201:
  *         description: Category created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 category:
+ *                   $ref: '#/components/schemas/CategoryDetail'
  *       400:
  *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - requires ADMIN or MANAGER role
+ *         description: Forbidden — requires ADMIN or MANAGER role
+ *       409:
+ *         description: Category name already exists
  */
 router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), categoryController.createCategory);
 
@@ -79,7 +119,10 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), categoryCon
  * @swagger
  * /categories/{id}:
  *   put:
- *     summary: Update a category
+ *     summary: Update a category (name, status, order, etc.)
+ *     description: |
+ *       Used by the dashboard to toggle category active/inactive status
+ *       and update other category fields. Send `{ "isActive": false }` to deactivate.
  *     tags: [Categories]
  *     security:
  *       - bearerAuth: []
@@ -89,7 +132,8 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), categoryCon
  *         required: true
  *         schema:
  *           type: string
- *         description: Category ID
+ *         description: Category MongoDB ObjectId
+ *         example: "64f1a2b3c4d5e6f7a8b9c0d1"
  *     requestBody:
  *       required: true
  *       content:
@@ -99,19 +143,34 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), categoryCon
  *             properties:
  *               name:
  *                 type: string
+ *                 example: Hot Drinks
+ *               isActive:
+ *                 type: boolean
+ *                 example: false
+ *                 description: Set to false to deactivate, true to activate
+ *               order:
+ *                 type: integer
+ *                 example: 3
  *               description:
  *                 type: string
- *               image:
+ *               icon:
  *                 type: string
  *     responses:
  *       200:
  *         description: Category updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 category:
+ *                   $ref: '#/components/schemas/CategoryDetail'
  *       400:
  *         description: Validation error
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - requires ADMIN or MANAGER role
+ *         description: Forbidden — requires ADMIN or MANAGER role
  *       404:
  *         description: Category not found
  */
@@ -121,7 +180,7 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), categoryC
  * @swagger
  * /categories/{id}:
  *   delete:
- *     summary: Delete a category
+ *     summary: Soft-delete a category (sets isActive to false)
  *     tags: [Categories]
  *     security:
  *       - bearerAuth: []
@@ -131,14 +190,23 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), categoryC
  *         required: true
  *         schema:
  *           type: string
- *         description: Category ID
+ *         description: Category MongoDB ObjectId
+ *         example: "64f1a2b3c4d5e6f7a8b9c0d1"
  *     responses:
  *       200:
  *         description: Category deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Category deleted
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - requires ADMIN or MANAGER role
+ *         description: Forbidden — requires ADMIN or MANAGER role
  *       404:
  *         description: Category not found
  */

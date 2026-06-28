@@ -2,12 +2,19 @@ const Location = require('../models/Location');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 const { validators, validate } = require('../utils/validators');
 
+const addStatusField = (loc) => {
+  const obj = loc.toJSON ? loc.toJSON() : loc;
+  obj.status = obj.isActive ? 'Active' : 'Inactive';
+  return obj;
+};
+
 exports.getLocations = async (req, res) => {
   try {
     const locations = await Location.find().populate('manager', 'name email');
-    const active = locations.filter(l => l.isActive).length;
-    const inactive = locations.filter(l => !l.isActive).length;
-    sendSuccess(res, { locations, stats: { total: locations.length, active, inactive } });
+    const mapped = locations.map(addStatusField);
+    const active = mapped.filter(l => l.isActive).length;
+    const inactive = mapped.filter(l => !l.isActive).length;
+    sendSuccess(res, { locations: mapped, stats: { total: mapped.length, active, inactive } });
   } catch (error) {
     sendError(res, error.message, 500, error);
   }
@@ -22,7 +29,7 @@ exports.createLocation = async (req, res) => {
     }
 
     const location = await Location.create(value);
-    sendSuccess(res, { location }, 'Delivery zone created', 201);
+    sendSuccess(res, { location: addStatusField(location) }, 'Delivery zone created', 201);
   } catch (error) {
     sendError(res, error.message, 500, error);
   }
@@ -39,7 +46,7 @@ exports.updateLocation = async (req, res) => {
 
     const location = await Location.findByIdAndUpdate(id, value, { new: true, runValidators: true });
     if (!location) return sendError(res, 'Location not found', 404);
-    sendSuccess(res, { location });
+    sendSuccess(res, { location: addStatusField(location) });
   } catch (error) {
     sendError(res, error.message, 500, error);
   }
@@ -51,9 +58,9 @@ exports.toggleStatus = async (req, res) => {
     const location = await Location.findById(id);
     if (!location) return sendError(res, 'Location not found', 404);
 
-    location.isActive = !location.isActive;
+    location.isActive = req.body.isActive !== undefined ? req.body.isActive : !location.isActive;
     await location.save();
-    sendSuccess(res, { location }, 'Status updated');
+    sendSuccess(res, { location: addStatusField(location) }, 'Status updated');
   } catch (error) {
     sendError(res, error.message, 500, error);
   }

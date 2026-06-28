@@ -20,7 +20,7 @@ module.exports = {
   // Table Status
   TABLE_STATUS: {
     AVAILABLE: 'available',
-    UNAVAILABLE: 'unavailable',
+    OCCUPIED: 'occupied',
   },
 
   // Reservation Status

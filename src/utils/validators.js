@@ -57,13 +57,36 @@ const validators = {
 
   // Product
   createProductSchema: Joi.object({
-    name: Joi.string().required(),
-    sku: Joi.string(),
-    price: Joi.number().required(),
-    categoryId: Joi.string().required(),
+    name:              Joi.string().required(),
+    sku:               Joi.string().allow('', null),
+    description:       Joi.string().allow('', null),
+    price:             Joi.number().required(),
+    categoryId:        Joi.string().required(),
+    cost:              Joi.number().min(0).default(0),
+    costPrice:         Joi.number().min(0),
     lowStockThreshold: Joi.number().default(5),
-    stockQty: Joi.number().default(0),
-    isActive: Joi.boolean().default(true),
+    stockQty:          Joi.number().default(0),
+    isActive:          Joi.boolean().default(true),
+    roastLevel:        Joi.string().valid('Light', 'Medium', 'Dark').allow('', null),
+    grindType:         Joi.string().valid('Whole Bean', 'Espresso', 'Filter').allow('', null),
+    variantGroups: Joi.array().items(
+      Joi.object({
+        name:     Joi.string().required(),
+        required: Joi.boolean().default(false),
+        options:  Joi.array().items(
+          Joi.object({
+            name:            Joi.string().required(),
+            priceAdjustment: Joi.number().default(0),
+          })
+        ).default([]),
+      })
+    ).default([]),
+    extras: Joi.array().items(
+      Joi.object({
+        name:  Joi.string().required(),
+        price: Joi.number().min(0).default(0),
+      })
+    ).default([]),
   }),
 
   // Order

@@ -148,10 +148,21 @@ exports.rateProduct = async (req, res) => {
   }
 };
 
+function parseFormJsonFields(body) {
+  const parsed = { ...body };
+  for (const key of ['variantGroups', 'extras']) {
+    if (typeof parsed[key] === 'string') {
+      try { parsed[key] = JSON.parse(parsed[key]); } catch (_) { /* leave as-is */ }
+    }
+  }
+  return parsed;
+}
+
 /* ── Dashboard CRUD (keep sendSuccess for dashboard) */
 exports.createProduct = async (req, res) => {
   try {
-    const { error, value } = validate(validators.createProductSchema, req.body);
+    const body = parseFormJsonFields(req.body);
+    const { error, value } = validate(validators.createProductSchema, body);
     if (error) return sendError(res, error.details.map(e => e.message).join(', '), 400);
 
     const data = { ...value, images: req.files ? req.files.map(f => f.path) : [] };
@@ -166,7 +177,8 @@ exports.createProduct = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
-    const { error, value } = validate(validators.createProductSchema, req.body);
+    const body = parseFormJsonFields(req.body);
+    const { error, value } = validate(validators.createProductSchema, body);
     if (error) return sendError(res, error.details.map(e => e.message).join(', '), 400);
 
     const data = { ...value };

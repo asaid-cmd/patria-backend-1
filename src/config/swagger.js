@@ -383,6 +383,117 @@ Key paths: \`/driver/login\`, \`/driver/shift/start\`, \`/driver/orders\`, \`/dr
             itemCount: { type: 'integer', example: 2 },
           },
         },
+
+        // ─── Products ─────────────────────────────────────────────────────────
+        VariantOption: {
+          type: 'object',
+          description: 'خيار واحد داخل مجموعة (مثل: Small, Medium, Large)',
+          properties: {
+            _id:             { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d7' },
+            id:              { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d7' },
+            name:            { type: 'string', example: 'Medium' },
+            priceAdjustment: { type: 'number', description: 'يُضاف على السعر الأساسي (+) أو يُخصم منه (-)', example: 5 },
+          },
+        },
+
+        VariantGroup: {
+          type: 'object',
+          description: 'مجموعة خيارات — مثل الحجم أو نوع الحليب',
+          properties: {
+            _id:      { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d6' },
+            id:       { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d6' },
+            name:     { type: 'string', example: 'Size' },
+            required: { type: 'boolean', description: 'هل يجب على العميل الاختيار؟', example: true },
+            options:  { type: 'array', items: { '$ref': '#/components/schemas/VariantOption' } },
+          },
+        },
+
+        ProductExtra: {
+          type: 'object',
+          description: 'إضافة اختيارية بسعر منفصل',
+          properties: {
+            _id:      { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0da' },
+            id:       { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0da' },
+            name:     { type: 'string', example: 'Extra Shot' },
+            price:    { type: 'number', example: 5 },
+            isActive: { type: 'boolean', example: true },
+          },
+        },
+
+        ProductFull: {
+          type: 'object',
+          description: 'المنتج كما يُرجعه GET /products — الـ shape الكامل (ERB-compatible)',
+          properties: {
+            _id:         { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d5' },
+            id:          { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d5' },
+            name:        { type: 'string', example: 'Caramel Latte' },
+            description: { type: 'string', example: 'Espresso with steamed milk and caramel syrup' },
+            price:       { type: 'number', example: 65 },
+            category:    { type: 'string', description: 'اسم الكاتيجوري (string مش ID)', example: 'Coffee' },
+            image:       { type: 'string', description: 'أول صورة فقط', example: 'uploads/products/latte.jpg', nullable: true },
+            isActive:    { type: 'boolean', example: true },
+            inventory:   { type: 'integer', example: 100 },
+            totalInventory: { type: 'integer', example: 100 },
+            lowStockThreshold: { type: 'integer', example: 10 },
+            rate:        { type: 'number', example: 4.5 },
+            reviewsCount:{ type: 'integer', example: 12 },
+            costPrice:   { type: 'number', example: 25 },
+            barcode:     { type: 'string', nullable: true },
+            isIngredient:{ type: 'boolean', example: false },
+            unit:        { type: 'string', example: 'pcs' },
+            haveCustomizationOption: {
+              type: 'boolean',
+              description: 'true إذا كان المنتج يحتوي على variantGroups',
+              example: true,
+            },
+            hasRecipe:   { type: 'boolean', example: false },
+            variantGroups: {
+              type: 'array',
+              description: 'مجموعات الخيارات (الحجم، نوع الحليب، إلخ)',
+              items: { '$ref': '#/components/schemas/VariantGroup' },
+            },
+            extras: {
+              type: 'array',
+              description: 'الإضافات الاختيارية مع سعر كل إضافة',
+              items: { '$ref': '#/components/schemas/ProductExtra' },
+            },
+            customizationOptions: {
+              type: 'object',
+              description: 'خيارات الكوفي الثابتة — مُرجعة تلقائياً من الـ backend، لا تُرسل في الـ request',
+              properties: {
+                roastLevels: { type: 'array', items: { type: 'string' }, example: ['Light', 'Medium', 'Dark'] },
+                grindTypes:  { type: 'array', items: { type: 'string' }, example: ['Whole Bean', 'Espresso', 'Filter'] },
+              },
+            },
+            sizes:       { type: 'array', items: { type: 'object' }, example: [] },
+            locationStock: { type: 'array', items: { type: 'object' }, example: [] },
+            createdAt:   { type: 'string', format: 'date-time' },
+            updatedAt:   { type: 'string', format: 'date-time' },
+            __v:         { type: 'integer', example: 0 },
+          },
+        },
+
+        ProductStored: {
+          type: 'object',
+          description: 'المنتج كما يُخزن في MongoDB — مُرجع من POST/PUT /products',
+          properties: {
+            _id:               { type: 'string' },
+            name:              { type: 'string', example: 'Caramel Latte' },
+            description:       { type: 'string' },
+            price:             { type: 'number', example: 65 },
+            cost:              { type: 'number', example: 25 },
+            categoryId:        { type: 'string', description: 'ObjectId للكاتيجوري' },
+            isActive:          { type: 'boolean', example: true },
+            stockQty:          { type: 'integer', example: 100 },
+            lowStockThreshold: { type: 'integer', example: 10 },
+            images:            { type: 'array', items: { type: 'string' }, example: ['uploads/products/latte.jpg'] },
+            variantGroups:     { type: 'array', items: { '$ref': '#/components/schemas/VariantGroup' } },
+            extras:            { type: 'array', items: { '$ref': '#/components/schemas/ProductExtra' } },
+            createdAt:         { type: 'string', format: 'date-time' },
+            updatedAt:         { type: 'string', format: 'date-time' },
+            __v:               { type: 'integer', example: 0 },
+          },
+        },
       },
     },
     tags: [

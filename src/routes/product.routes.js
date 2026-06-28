@@ -11,25 +11,23 @@ const router = express.Router();
  * tags:
  *   name: Products
  *   description: |
- *     Menu product management (Dashboard + Mobile).
+ *     Menu product management (Dashboard + Mobile App).
  *
- *     ## Product structure
+ *     ## Product Fields
  *
- *     Every product has these key sections:
+ *     | Field | Description |
+ *     |-------|-------------|
+ *     | `variantGroups` | Option groups like Size (Small / Medium / Large) with price adjustments |
+ *     | `extras` | Optional add-ons with individual prices (e.g. Extra Shot — 5 EGP) |
+ *     | `customizationOptions` | Fixed coffee options (roastLevel, grindType) — always returned by the server, never sent in requests |
  *
- *     | Field | ما هو |
- *     |-------|-------|
- *     | `variantGroups` | مجموعات الخيارات (مثل: الحجم — Small/Medium/Large) مع فارق سعر |
- *     | `extras` | إضافات اختيارية (مثل: Extra Shot — 5 EGP) |
- *     | `customizationOptions` | خيارات ثابتة للكوفي (roastLevel, grindType) — مُحددة من الـ backend |
+ *     ## Sending variantGroups & extras with form-data
  *
- *     ## Sending variantGroups & extras via form-data
- *
- *     لأن الـ endpoint يستخدم `multipart/form-data` لرفع الصور،
- *     يجب إرسال `variantGroups` و `extras` كـ **JSON string**:
+ *     Because this endpoint uses `multipart/form-data` for image uploads,
+ *     `variantGroups` and `extras` must be sent as **JSON strings**:
  *
  *     ```
- *     variantGroups = '[{"name":"Size","required":true,"options":[{"name":"Small","priceAdjustment":0},{"name":"Medium","priceAdjustment":5},{"name":"Large","priceAdjustment":10}]}]'
+ *     variantGroups = '[{"name":"Size","required":true,"options":[{"name":"Small","priceAdjustment":0},{"name":"Large","priceAdjustment":10}]}]'
  *     extras = '[{"name":"Extra Shot","price":5},{"name":"Extra Sugar","price":0}]'
  *     ```
  */
@@ -141,8 +139,8 @@ router.get('/', productController.getProducts);
  *   get:
  *     summary: Get a single product by ID
  *     description: |
- *       Returns a single product object (no wrapper — flat response).
- *       Contains the full product including `variantGroups`, `extras`, and `customizationOptions`.
+ *       Returns a single product object (flat response — no wrapper).
+ *       Includes the full product with `variantGroups`, `extras`, and `customizationOptions`.
  *     tags: [Products]
  *     parameters:
  *       - in: path
@@ -164,7 +162,7 @@ router.get('/', productController.getProducts);
  *         content:
  *           application/json:
  *             example:
- *               message: "المنتج غير موجود"
+ *               message: "Product not found"
  */
 router.get('/:id', productController.getProductById);
 
@@ -174,7 +172,7 @@ router.get('/:id', productController.getProductById);
  *   post:
  *     summary: Rate a product (1–5 stars)
  *     description: |
- *       Submits a rating for a product. Updates `avgRating` and `ratingCount`.
+ *       Submits a star rating for a product. Updates `avgRating` and increments `ratingCount`.
  *
  *       **Response:**
  *       ```json
@@ -208,14 +206,14 @@ router.get('/:id', productController.getProductById);
  *             rating: 5
  *     responses:
  *       200:
- *         description: Rating saved
+ *         description: Rating saved successfully
  *         content:
  *           application/json:
  *             example:
  *               avgRating: 4.5
  *               ratingCount: 13
  *       400:
- *         description: Invalid rating value
+ *         description: Invalid rating value (must be between 1 and 5)
  */
 router.post('/:id/rate', verifyToken, productController.rateProduct);
 
@@ -223,33 +221,21 @@ router.post('/:id/rate', verifyToken, productController.rateProduct);
  * @swagger
  * /products:
  *   post:
- *     summary: Create a new product (Dashboard)
+ *     summary: Create a new product
  *     description: |
- *       Creates a new menu product. Supports image upload (`multipart/form-data`).
+ *       Creates a new menu product. Supports image upload via `multipart/form-data`.
+ *
+ *       **Roles required:** ADMIN or MANAGER
  *
  *       ---
  *
- *       ## ⚠️ Important — multipart/form-data + JSON fields
+ *       ## variantGroups — Option Groups
  *
- *       لأن الـ endpoint يستخدم `multipart/form-data` لرفع الصور،
- *       يجب إرسال `variantGroups` و `extras` كـ **JSON string** (مش object مباشرة):
+ *       Use variant groups to define size or type options that affect the price.
+ *       Each group has a `name`, a `required` flag, and a list of `options`.
+ *       Each option has a `name` and a `priceAdjustment` (added to the base price).
  *
- *       ```
- *       // ✅ صح — JSON string
- *       variantGroups = '[{"name":"Size","required":true,"options":[{"name":"Small","priceAdjustment":0},{"name":"Large","priceAdjustment":10}]}]'
- *
- *       // ❌ غلط — object مباشر لا يعمل مع form-data
- *       variantGroups = [{ name: "Size", ... }]
- *       ```
- *
- *       ---
- *
- *       ## variantGroups — مجموعات الخيارات (الأحجام والأنواع)
- *
- *       يستخدمها العميل لاختيار حجم أو نوع عند الطلب.
- *       كل مجموعة تحتوي على خيارات، كل خيار له `priceAdjustment` (زيادة أو خصم على السعر الأساسي).
- *
- *       **مثال — الحجم:**
+ *       **Example — Size:**
  *       ```json
  *       [
  *         {
@@ -264,16 +250,16 @@ router.post('/:id/rate', verifyToken, productController.rateProduct);
  *       ]
  *       ```
  *
- *       **مثال — نوع الحليب:**
+ *       **Example — Milk Type:**
  *       ```json
  *       [
  *         {
  *           "name": "Milk Type",
  *           "required": false,
  *           "options": [
- *             { "name": "Regular",  "priceAdjustment": 0  },
- *             { "name": "Oat Milk", "priceAdjustment": 8  },
- *             { "name": "Soy Milk", "priceAdjustment": 8  }
+ *             { "name": "Regular",  "priceAdjustment": 0 },
+ *             { "name": "Oat Milk", "priceAdjustment": 8 },
+ *             { "name": "Soy Milk", "priceAdjustment": 8 }
  *           ]
  *         }
  *       ]
@@ -281,40 +267,51 @@ router.post('/:id/rate', verifyToken, productController.rateProduct);
  *
  *       ---
  *
- *       ## extras — الإضافات الاختيارية
+ *       ## extras — Optional Add-ons
  *
- *       إضافات يختارها العميل بشكل اختياري، كل إضافة لها سعر منفصل.
+ *       Optional items the customer can add to their order. Each extra has a name and a fixed price.
  *
- *       **مثال:**
+ *       **Example:**
  *       ```json
  *       [
- *         { "name": "Extra Shot",   "price": 5  },
- *         { "name": "Extra Sugar",  "price": 0  },
- *         { "name": "Whipped Cream","price": 8  }
+ *         { "name": "Extra Shot",    "price": 5 },
+ *         { "name": "Extra Sugar",   "price": 0 },
+ *         { "name": "Whipped Cream", "price": 8 }
  *       ]
  *       ```
  *
  *       ---
  *
- *       ## customizationOptions — خيارات الكوفي الثابتة
+ *       ## customizationOptions — Fixed Coffee Options
  *
- *       هذه الخيارات **لا تُرسل** في الـ request — يُرجعها الـ backend تلقائياً في كل منتج:
+ *       These are **not sent** in the request. The server always returns them automatically:
  *       ```json
  *       {
  *         "roastLevels": ["Light", "Medium", "Dark"],
  *         "grindTypes":  ["Whole Bean", "Espresso", "Filter"]
  *       }
  *       ```
- *       العميل يختار `roastLevel` و `grindType` من هذه القوائم عند الطلب.
+ *       The customer selects their preferred `roastLevel` and `grindType` when placing an order.
  *
  *       ---
+ *
+ *       ## Important — form-data + JSON fields
+ *
+ *       Because this endpoint uses `multipart/form-data` for image uploads,
+ *       `variantGroups` and `extras` must be sent as **JSON strings** (not objects):
+ *
+ *       ```
+ *       // Correct — JSON string
+ *       variantGroups = '[{"name":"Size","required":true,"options":[...]}]'
+ *
+ *       // Wrong — object does not work with form-data
+ *       variantGroups = [{ name: "Size", ... }]
+ *       ```
  *
  *       **Response:**
  *       ```json
  *       { "statusCode": 201, "success": true, "message": "Product created", "data": { "product": {...} } }
  *       ```
- *
- *       **Roles required:** ADMIN or MANAGER
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
@@ -331,57 +328,57 @@ router.post('/:id/rate', verifyToken, productController.rateProduct);
  *             properties:
  *               name:
  *                 type: string
- *                 description: اسم المنتج (مطلوب)
+ *                 description: Product name (required)
  *                 example: "Caramel Latte"
  *               description:
  *                 type: string
- *                 description: وصف المنتج (اختياري)
+ *                 description: Product description (optional)
  *                 example: "Espresso with steamed milk and caramel syrup"
  *               price:
  *                 type: number
- *                 description: سعر البيع الأساسي بالجنيه (مطلوب)
+ *                 description: Selling price in EGP (required)
  *                 example: 65
  *               categoryId:
  *                 type: string
  *                 description: |
- *                   MongoDB ObjectId للكاتيجوري (مطلوب).
- *                   استخدم `GET /categories` للحصول على الـ IDs.
+ *                   Category MongoDB ObjectId (required).
+ *                   Use `GET /categories` to get available IDs.
  *                 example: "64f1a2b3c4d5e6f7a8b9c0d1"
  *               cost:
  *                 type: number
- *                 description: سعر التكلفة (اختياري — للتقارير الداخلية)
+ *                 description: Cost price in EGP — for internal reports (optional)
  *                 example: 25
  *               sku:
  *                 type: string
- *                 description: كود المنتج الداخلي (اختياري)
+ *                 description: Internal product code (optional)
  *                 example: "LAT-CAR-001"
  *               stockQty:
  *                 type: integer
- *                 description: الكمية المتاحة في المخزون (default 0)
+ *                 description: Available stock quantity (default 0)
  *                 example: 100
  *               lowStockThreshold:
  *                 type: integer
- *                 description: حد التنبيه لنقص المخزون (default 5)
+ *                 description: Low stock alert threshold (default 5)
  *                 example: 10
  *               isActive:
  *                 type: boolean
- *                 description: هل المنتج ظاهر في القائمة؟ (default true)
+ *                 description: Whether this product is visible in the menu (default true)
  *                 example: true
  *               roastLevel:
  *                 type: string
  *                 enum: [Light, Medium, Dark]
- *                 description: مستوى التحميص — للمنتجات الكوفي فقط (اختياري)
+ *                 description: Roast level — for coffee products only (optional)
  *                 example: "Medium"
  *               grindType:
  *                 type: string
  *                 enum: [Whole Bean, Espresso, Filter]
- *                 description: نوع الطحن — للمنتجات الكوفي فقط (اختياري)
+ *                 description: Grind type — for coffee products only (optional)
  *                 example: "Espresso"
  *               variantGroups:
  *                 type: string
  *                 description: |
- *                   **JSON string** — مجموعات الخيارات (الحجم، نوع الحليب، إلخ).
- *                   أرسل كـ JSON string مع form-data.
+ *                   **JSON string** — option groups (size, milk type, etc.).
+ *                   Must be sent as a JSON string when using form-data.
  *
  *                   **Format:**
  *                   ```json
@@ -391,8 +388,8 @@ router.post('/:id/rate', verifyToken, productController.rateProduct);
  *               extras:
  *                 type: string
  *                 description: |
- *                   **JSON string** — الإضافات الاختيارية مع سعر كل إضافة.
- *                   أرسل كـ JSON string مع form-data.
+ *                   **JSON string** — optional add-ons with individual prices.
+ *                   Must be sent as a JSON string when using form-data.
  *
  *                   **Format:**
  *                   ```json
@@ -404,7 +401,7 @@ router.post('/:id/rate', verifyToken, productController.rateProduct);
  *                 items:
  *                   type: string
  *                   format: binary
- *                 description: صور المنتج (اختياري — حد أقصى 5 صور)
+ *                 description: Product images (optional — max 5 files)
  *                 maxItems: 5
  *     responses:
  *       201:
@@ -475,7 +472,7 @@ router.post('/:id/rate', verifyToken, productController.rateProduct);
  *               message: "\"price\" is required"
  *               data: null
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized — missing or invalid token
  *       403:
  *         description: Forbidden — requires ADMIN or MANAGER role
  */
@@ -485,13 +482,12 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), upload.arra
  * @swagger
  * /products/{id}:
  *   put:
- *     summary: Update an existing product (Dashboard)
+ *     summary: Update an existing product
  *     description: |
- *       Updates all fields of a product. Same rules as POST apply —
- *       send `variantGroups` and `extras` as **JSON strings** in form-data.
+ *       Updates all fields of a product. Same rules as POST — send `variantGroups` and `extras` as **JSON strings**.
  *
  *       If `images` are included, they **replace** the existing images.
- *       If no `images` field is sent, the existing images remain unchanged.
+ *       If no `images` field is sent, existing images are kept unchanged.
  *
  *       **Roles required:** ADMIN or MANAGER
  *     tags: [Products]
@@ -540,6 +536,14 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), upload.arra
  *               lowStockThreshold:
  *                 type: integer
  *                 example: 10
+ *               roastLevel:
+ *                 type: string
+ *                 enum: [Light, Medium, Dark]
+ *                 example: "Medium"
+ *               grindType:
+ *                 type: string
+ *                 enum: [Whole Bean, Espresso, Filter]
+ *                 example: "Espresso"
  *               variantGroups:
  *                 type: string
  *                 description: JSON string — replaces all existing variant groups
@@ -553,7 +557,7 @@ router.post('/', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), upload.arra
  *                 items:
  *                   type: string
  *                   format: binary
- *                 description: New images — replaces existing images if provided
+ *                 description: New images — replaces existing images if provided (max 5 files)
  *                 maxItems: 5
  *     responses:
  *       200:
@@ -587,7 +591,7 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), upload.ar
  *   delete:
  *     summary: Soft-delete a product (sets isActive = false)
  *     description: |
- *       Does **not** physically remove the product.
+ *       Does **not** physically remove the product from the database.
  *       Sets `isActive = false` so it no longer appears in product listings.
  *
  *       **Response:**
@@ -609,7 +613,7 @@ router.put('/:id', verifyToken, authorize(ROLES.ADMIN, ROLES.MANAGER), upload.ar
  *         example: "64f1a2b3c4d5e6f7a8b9c0d5"
  *     responses:
  *       200:
- *         description: Product soft-deleted
+ *         description: Product soft-deleted successfully
  *         content:
  *           application/json:
  *             example:

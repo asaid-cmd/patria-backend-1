@@ -400,30 +400,30 @@ Key endpoints: \`/driver/shift/start\`, \`/driver/orders\`, \`/driver/location\`
         // ─── Products ─────────────────────────────────────────────────────────
         VariantOption: {
           type: 'object',
-          description: 'خيار واحد داخل مجموعة (مثل: Small, Medium, Large)',
+          description: 'A single option inside a variant group (e.g. Small, Medium, Large)',
           properties: {
             _id:             { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d7' },
             id:              { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d7' },
             name:            { type: 'string', example: 'Medium' },
-            priceAdjustment: { type: 'number', description: 'يُضاف على السعر الأساسي (+) أو يُخصم منه (-)', example: 5 },
+            priceAdjustment: { type: 'number', description: 'Amount added to (+) or subtracted from (-) the base price', example: 5 },
           },
         },
 
         VariantGroup: {
           type: 'object',
-          description: 'مجموعة خيارات — مثل الحجم أو نوع الحليب',
+          description: 'An option group — e.g. Size or Milk Type',
           properties: {
             _id:      { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d6' },
             id:       { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d6' },
             name:     { type: 'string', example: 'Size' },
-            required: { type: 'boolean', description: 'هل يجب على العميل الاختيار؟', example: true },
+            required: { type: 'boolean', description: 'Whether the customer must choose an option', example: true },
             options:  { type: 'array', items: { '$ref': '#/components/schemas/VariantOption' } },
           },
         },
 
         ProductExtra: {
           type: 'object',
-          description: 'إضافة اختيارية بسعر منفصل',
+          description: 'An optional add-on with an individual price',
           properties: {
             _id:      { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0da' },
             id:       { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0da' },
@@ -435,15 +435,15 @@ Key endpoints: \`/driver/shift/start\`, \`/driver/orders\`, \`/driver/location\`
 
         ProductFull: {
           type: 'object',
-          description: 'المنتج كما يُرجعه GET /products — الـ shape الكامل المُرجع من GET /products',
+          description: 'Full product object returned by GET /products and GET /products/:id',
           properties: {
             _id:         { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d5' },
             id:          { type: 'string', example: '64f1a2b3c4d5e6f7a8b9c0d5' },
             name:        { type: 'string', example: 'Caramel Latte' },
             description: { type: 'string', example: 'Espresso with steamed milk and caramel syrup' },
             price:       { type: 'number', example: 65 },
-            category:    { type: 'string', description: 'اسم الكاتيجوري (string مش ID)', example: 'Coffee' },
-            image:       { type: 'string', description: 'أول صورة فقط', example: 'uploads/products/latte.jpg', nullable: true },
+            category:    { type: 'string', description: 'Category name string (not the ID)', example: 'Coffee' },
+            image:       { type: 'string', description: 'First image URL only', example: 'uploads/products/latte.jpg', nullable: true },
             isActive:    { type: 'boolean', example: true },
             inventory:   { type: 'integer', example: 100 },
             totalInventory: { type: 'integer', example: 100 },
@@ -456,23 +456,23 @@ Key endpoints: \`/driver/shift/start\`, \`/driver/orders\`, \`/driver/location\`
             unit:        { type: 'string', example: 'pcs' },
             haveCustomizationOption: {
               type: 'boolean',
-              description: 'true إذا كان المنتج يحتوي على variantGroups',
+              description: 'true if the product has at least one variant group',
               example: true,
             },
             hasRecipe:   { type: 'boolean', example: false },
             variantGroups: {
               type: 'array',
-              description: 'مجموعات الخيارات (الحجم، نوع الحليب، إلخ)',
+              description: 'Option groups (size, milk type, etc.) with price adjustments per option',
               items: { '$ref': '#/components/schemas/VariantGroup' },
             },
             extras: {
               type: 'array',
-              description: 'الإضافات الاختيارية مع سعر كل إضافة',
+              description: 'Optional add-ons with individual prices',
               items: { '$ref': '#/components/schemas/ProductExtra' },
             },
             customizationOptions: {
               type: 'object',
-              description: 'خيارات الكوفي الثابتة — مُرجعة تلقائياً من الـ backend، لا تُرسل في الـ request',
+              description: 'Fixed coffee customization options — always returned by the server, never sent in requests',
               properties: {
                 roastLevels: { type: 'array', items: { type: 'string' }, example: ['Light', 'Medium', 'Dark'] },
                 grindTypes:  { type: 'array', items: { type: 'string' }, example: ['Whole Bean', 'Espresso', 'Filter'] },
@@ -488,14 +488,14 @@ Key endpoints: \`/driver/shift/start\`, \`/driver/orders\`, \`/driver/location\`
 
         ProductStored: {
           type: 'object',
-          description: 'المنتج كما يُخزن في MongoDB — مُرجع من POST/PUT /products',
+          description: 'Product as stored in MongoDB — returned by POST/PUT /products',
           properties: {
             _id:               { type: 'string' },
             name:              { type: 'string', example: 'Caramel Latte' },
             description:       { type: 'string' },
             price:             { type: 'number', example: 65 },
             cost:              { type: 'number', example: 25 },
-            categoryId:        { type: 'string', description: 'ObjectId للكاتيجوري' },
+            categoryId:        { type: 'string', description: 'Category ObjectId' },
             isActive:          { type: 'boolean', example: true },
             stockQty:          { type: 'integer', example: 100 },
             lowStockThreshold: { type: 'integer', example: 10 },

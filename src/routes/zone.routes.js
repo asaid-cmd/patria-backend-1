@@ -70,7 +70,7 @@ router.get('/lookup', zoneController.lookupZone);
  *                 example: "Alexandria — Sidi Gaber"
  *               nameAr:
  *                 type: string
- *                 example: "الإسكندرية — سيدي جابر"
+ *                 example: "Alexandria — Sidi Gaber"
  *               deliveryFee:
  *                 type: number
  *                 example: 25

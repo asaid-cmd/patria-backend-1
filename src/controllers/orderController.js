@@ -4,6 +4,7 @@
  * Mobile endpoints return ERB-compatible flat JSON.
  */
 
+const mongoose = require('mongoose');
 const Order    = require('../models/Order');
 const Customer = require('../models/Customer');
 const Offer    = require('../models/Offer');
@@ -140,6 +141,11 @@ exports.placeCustomerOrder = async (req, res) => {
 
     if (!items || !items.length) return res.status(400).json({ message: 'items مطلوبة' });
 
+    // region is an ObjectId ref — drop it if the app sends "" or an invalid id
+    if (customer && customer.region && !mongoose.Types.ObjectId.isValid(customer.region)) {
+      customer.region = undefined;
+    }
+
     const customerId = req.user.id;
     let subtotal     = summary?.subtotal || 0;
     let deliveryFee  = summary?.deliveryFee || 0;
@@ -197,6 +203,11 @@ exports.placeCustomerOrder = async (req, res) => {
     const total = Math.max(0, subtotal - totalDiscount + deliveryFee);
 
     // 4. Save order
+    // Normalize payment method casing — Flutter sends "Cash"/"Online" but the
+    // schema enum only accepts lowercase "cash" (Online stays capitalized).
+    const paymentMethodMap = { cash: 'cash', Cash: 'cash', online: 'Online', Online: 'Online' };
+    const paymentMethod = paymentMethodMap[payment?.method] || 'cash';
+
     const order = await Order.create({
       type:               orderType || 'Delivery',
       customerId,
@@ -209,7 +220,7 @@ exports.placeCustomerOrder = async (req, res) => {
       pointsRedeemed:     effectivePointsRedeemed,
       pointsDiscountAmount,
       total,
-      paymentMethod:      payment?.method || 'Cash',
+      paymentMethod,
       notes,
       status:             'pending',
     });

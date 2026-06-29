@@ -10,7 +10,9 @@ const router = express.Router();
 
 const verifyCustomer = (req, res, next) => {
   verifyToken(req, res, () => {
-    if (req.user.role !== 'customer') {
+    // Customer tokens have no role field (just { id }).
+    // Only block driver tokens from accessing customer routes.
+    if (req.user.role === 'driver') {
       const { sendError } = require('../utils/apiResponse');
       return sendError(res, 'Customer access required', 403);
     }

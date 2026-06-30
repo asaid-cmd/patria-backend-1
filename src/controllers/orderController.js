@@ -356,6 +356,7 @@ function _orderShape(o, estimatedPointsEarned) {
     };
   });
 
+  const pmRaw = o.paymentMethod || o.payment?.method || '';
   return {
     _id:           o._id,
     orderId:       o.orderId,
@@ -363,6 +364,7 @@ function _orderShape(o, estimatedPointsEarned) {
     status:        o.status,
     deliveryStatus:o.deliveryStatus || null,
     type:          o.type,
+    orderType:     o.type || o.orderType || 'Delivery', // ERB compat
     customer:      o.customer || null,
     items,
     summary: {
@@ -370,7 +372,13 @@ function _orderShape(o, estimatedPointsEarned) {
       deliveryFee:           o.deliveryFee || 0,
       discount:              o.discount    || 0,
       total:                 o.total       || 0,
+      coupon:                { code: o.couponCode || '', amount: o.discount || 0 },
       estimatedPointsEarned: estimatedPointsEarned ?? (o.estimatedPointsEarned || 0),
+    },
+    // ERB compat: nested payment object
+    payment: {
+      method: pmRaw || 'Cash on Delivery',
+      status: o.paymentStatus || 'Pending',
     },
     totalPrice:            o.total       || 0,
     subtotal:              o.subtotal    || 0,
@@ -380,7 +388,7 @@ function _orderShape(o, estimatedPointsEarned) {
     pointsRedeemed:        o.pointsRedeemed        || 0,
     pointsDiscountAmount:  o.pointsDiscountAmount   || 0,
     estimatedPointsEarned: estimatedPointsEarned ?? (o.estimatedPointsEarned || 0),
-    paymentMethod:         o.paymentMethod || null,
+    paymentMethod:         pmRaw || null,
     notes:                 o.notes        || null,
     isReviewed:            o.isReviewed   || false,
     rating:                o.rating       || null,

@@ -300,14 +300,16 @@ exports.updatePassword = exports.changePassword;
 ══════════════════════════════════════════════════════════ */
 exports.getProfile = async (req, res) => {
   try {
+    const Subscription = require('../models/Subscription');
     const customer = await Customer.findById(req.user.id)
       .select('-password -otp -otpExpiry -fcmTokens')
-      .populate('favorites', 'name price images isActive');
+      .populate('favorites', 'name price image images isActive description category rate reviewsCount sizes customizationOptions');
     if (!customer) return res.status(404).json({ message: 'المستخدم غير موجود' });
 
-    // Flat `address` string = label of first default address (ERB compat)
     const defaultAddr = (customer.addresses || []).find(a => a.isDefault) || customer.addresses?.[0];
     const addressStr  = defaultAddr?.address || defaultAddr?.label || '';
+
+    const isSubscriber = (await Subscription.countDocuments({ customerId: customer._id, status: 'active' })) > 0;
 
     res.json({
       _id:             customer._id,
@@ -320,14 +322,16 @@ exports.getProfile = async (req, res) => {
       tier:            customer.tier || 'Bronze',
       address:         addressStr,
       addresses:       customer.addresses || [],
-      favorites:       customer.favorites || [],
-      isSubscriber:    false,
+      favorites:       (customer.favorites || []).filter(Boolean),
+      isSubscriber,
       orderCount:      customer.orderCount || 0,
       lifetimeValue:   customer.lifetimeValue || 0,
       lastOrderDate:   customer.lastOrderDate || null,
       isActive:        customer.isActive !== false,
       provider:        customer.provider || 'phone',
       permissions:     [],
+      dateOfBirth:     customer.dateOfBirth || null,
+      preferences:     customer.preferences || { favoriteRoast: null, favoriteGrind: null },
       createdAt:       customer.createdAt,
       updatedAt:       customer.updatedAt,
     });
@@ -339,11 +343,21 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name, email, phone, dateOfBirth, preferences } = req.body;
+    const update = {};
+    if (name        !== undefined) update.name        = name;
+    if (email       !== undefined) update.email       = email;
+    if (phone       !== undefined) update.phone       = phone;
+    if (dateOfBirth !== undefined) update.dateOfBirth = dateOfBirth;
+    if (preferences !== undefined) update.preferences = preferences;
+
     const customer = await Customer.findByIdAndUpdate(
       req.user.id,
-      { name, email, phone, dateOfBirth, preferences },
+      update,
       { new: true, runValidators: true }
     ).select('-password -otp -otpExpiry -fcmTokens');
+
+    const defaultAddr = (customer.addresses || []).find(a => a.isDefault) || customer.addresses?.[0];
+    const addressStr  = defaultAddr?.address || defaultAddr?.label || '';
 
     res.json({
       _id:           customer._id,
@@ -351,6 +365,9 @@ exports.updateProfile = async (req, res) => {
       email:         customer.email || '',
       phone:         customer.phone || '',
       role:          'user',
+      address:       addressStr,
+      dateOfBirth:   customer.dateOfBirth || null,
+      preferences:   customer.preferences || { favoriteRoast: null, favoriteGrind: null },
       loyaltyPoints: customer.loyaltyPoints || 0,
       tier:          customer.tier || 'Bronze',
     });
@@ -435,8 +452,16 @@ exports.loyaltyCheckoutPreview = async (req, res) => {
 exports.getFavorites = async (req, res) => {
   try {
     const customer = await Customer.findById(req.user.id)
-      .populate('favorites', 'name price images isActive description');
-    res.json(customer?.favorites?.filter(p => p.isActive !== false) || []);
+      .populate('favorites', 'name price image images isActive description category rate reviewsCount sizes customizationOptions');
+    const favs = (customer?.favorites || [])
+      .filter(p => p && p.isActive !== false)
+      .map(p => {
+        const obj = p.toObject ? p.toObject() : p;
+        // Normalize image: ERB uses single `image` string
+        if (!obj.image && obj.images?.length) obj.image = obj.images[0];
+        return obj;
+      });
+    res.json(favs);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -478,14 +503,14 @@ exports.getAddresses = async (req, res) => {
 
 exports.addAddress = async (req, res) => {
   try {
-    const { label, zone, zoneId, lat, lng, buildingName, apartmentNo, floor, street, city, nearbyTrademark, phone, isDefault, address } = req.body;
+    const { label, area, zone, zoneId, lat, lng, buildingName, apartmentNo, floor, street, city, nearbyTrademark, phone, isDefault, address } = req.body;
 
     const customer = await Customer.findById(req.user.id);
     if (!customer) return res.status(404).json({ message: 'المستخدم غير موجود' });
 
     if (isDefault) customer.addresses.forEach(a => { a.isDefault = false; });
 
-    customer.addresses.push({ label, address, zone, zoneId, lat, lng, buildingName, apartmentNo, floor, street, city, nearbyTrademark, phone, isDefault: !!isDefault });
+    customer.addresses.push({ label, address, area: area || zone, zone: zone || area, zoneId, lat, lng, buildingName, apartmentNo, floor, street, city, nearbyTrademark, phone, isDefault: !!isDefault });
     await customer.save();
 
     res.status(201).json(customer.addresses);

@@ -78,7 +78,7 @@ exports.getActiveOffers = async (req, res) => {
   try {
     const now = new Date();
     const offers = await Offer.find({
-      status: 'active',
+      status: { $in: ['active', 'Active'] }, // ERB seeds use 'Active' (capital A)
       startDate: { $lte: now },
       endDate: { $gte: now },
     }).populate('productIds').sort({ createdAt: -1 });
@@ -88,20 +88,30 @@ exports.getActiveOffers = async (req, res) => {
   }
 };
 
-// Mobile: returns { discount, message } (ERB shape)
+// Mobile: returns { valid, discountAmount, discount, discountType, discountValue, message }
+// Both `discountAmount` (ERB field name) and `discount` (Postman docs alias) are returned
 exports.validateCoupon = async (req, res) => {
   try {
-    const { code, orderTotal, subtotal } = req.body;
-    if (!code) return res.status(400).json({ message: 'كود الخصم مطلوب' });
+    const { code, orderTotal, subtotal, amount } = req.body;
+    if (!code) return res.status(400).json({ valid: false, discountAmount: 0, discount: 0, message: 'كود الخصم مطلوب' });
 
-    const total = orderTotal || subtotal || 0;
+    const total = orderTotal || subtotal || amount || 0;
+
+    const couponReply = (discountAmount, discountType, discountValue, message) => ({
+      valid: true,
+      discountAmount,
+      discount: discountAmount, // alias
+      discountType,
+      discountValue,
+      message,
+    });
 
     // Try Offer model first (supports both code and couponCode fields)
     const Offer  = require('../models/Offer');
     const now    = new Date();
     const offer  = await Offer.findOne({
       $or: [{ code }, { couponCode: code }],
-      status: 'active',
+      status: { $in: ['active', 'Active'] },
       startDate: { $lte: now },
       endDate:   { $gte: now },
     });
@@ -110,27 +120,27 @@ exports.validateCoupon = async (req, res) => {
       // Fallback: Coupon model
       const Coupon = require('../models/Coupon');
       const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
-      if (!coupon) return res.status(404).json({ message: 'كود الخصم غير صالح أو منتهي الصلاحية' });
+      if (!coupon) return res.status(404).json({ valid: false, discountAmount: 0, discount: 0, message: 'كود الخصم غير صالح أو منتهي الصلاحية' });
       if (coupon.expiryDate && coupon.expiryDate < now) {
-        return res.status(400).json({ message: 'كود الخصم منتهي الصلاحية' });
+        return res.status(400).json({ valid: false, discountAmount: 0, discount: 0, message: 'كود الخصم منتهي الصلاحية' });
       }
-      const discount = coupon.discountType === 'percentage'
+      const discAmt = coupon.discountType === 'percentage'
         ? Math.round((total * coupon.discountValue / 100) * 100) / 100
         : coupon.discountValue;
-      return res.json({ discount, message: 'تم تطبيق الخصم بنجاح' });
+      return res.json(couponReply(discAmt, coupon.discountType, coupon.discountValue, 'تم تطبيق الخصم بنجاح'));
     }
 
     const maxUses   = offer.maxUses || offer.usageLimit || 0;
     const usedCount = offer.usedCount || offer.usageCount || 0;
     if (maxUses > 0 && usedCount >= maxUses) {
-      return res.status(400).json({ message: 'تم استنفاذ عدد مرات استخدام الكود' });
+      return res.status(400).json({ valid: false, discountAmount: 0, discount: 0, message: 'تم استنفاذ عدد مرات استخدام الكود' });
     }
 
-    const discount = offer.discountType === 'percentage'
+    const discAmt = offer.discountType === 'percentage'
       ? Math.round((total * offer.discountValue / 100) * 100) / 100
       : Math.min(offer.discountValue || 0, total);
 
-    res.json({ discount, message: 'تم تطبيق الخصم بنجاح' });
+    res.json(couponReply(discAmt, offer.discountType, offer.discountValue, 'تم تطبيق الخصم بنجاح'));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

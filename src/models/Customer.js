@@ -5,6 +5,7 @@ const { CUSTOMER_TIER } = require('../config/constants');
 const addressSchema = new mongoose.Schema({
   label:           { type: String, default: 'Home' },
   address:         { type: String },
+  area:            { type: String }, // ERB compat alias for zone/district name
   zone:            { type: String },
   zoneId:          { type: mongoose.Schema.Types.ObjectId, ref: 'Zone', default: null },
   lat:             Number,
@@ -47,6 +48,13 @@ const customerSchema = new mongoose.Schema({
   orderCount:    { type: Number, default: 0 },
   lifetimeValue: { type: Number, default: 0 },
   lastOrderDate: { type: Date, default: null },
+  dateOfBirth:   { type: Date },
+  preferences: {
+    favoriteRoast:  { type: String },
+    favoriteGrind:  { type: String },
+    language:       { type: String, default: 'ar' },
+    notifications:  { type: Boolean, default: true },
+  },
 }, { timestamps: true });
 
 customerSchema.pre('save', async function (next) {

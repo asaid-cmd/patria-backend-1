@@ -28,9 +28,19 @@ const verifyCustomer = (req, res, next) => {
 router.get('/my', verifyCustomer, async (req, res) => {
   try {
     const subs = await Subscription.find({ customerId: req.user.id })
-      .populate('productId', 'name price images')
+      .populate('productId', 'name price image images')
       .sort({ createdAt: -1 });
-    res.json(subs);
+    // Return ERB-compatible shape: `product` alias for `productId`, `user` alias for `customerId`
+    const shaped = subs.map(s => {
+      const obj = s.toObject ? s.toObject() : s;
+      obj.product = obj.productId; // ERB compat
+      obj.user    = obj.customerId; // ERB compat
+      if (obj.product && !obj.product.image && obj.product.images?.length) {
+        obj.product.image = obj.product.images[0];
+      }
+      return obj;
+    });
+    res.json(shaped);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

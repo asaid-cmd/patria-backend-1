@@ -12,7 +12,11 @@ exports.getCategories = async (req, res) => {
     const withCount = await Promise.all(
       categories.map(async (cat) => ({
         ...cat,
-        productsCount: await Product.countDocuments({ category: cat._id, isActive: true }),
+        // Count by both ObjectId ref and name string (ERB stores category as name string)
+        productsCount: await Product.countDocuments({
+          $or: [{ category: cat._id }, { category: cat.name }],
+          isActive: true,
+        }),
       }))
     );
 

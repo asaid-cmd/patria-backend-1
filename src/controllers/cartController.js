@@ -20,27 +20,44 @@ function calcVariantAdjustment(selectedVariants) {
   return (selectedVariants || []).reduce((sum, v) => sum + (Number(v.priceAdjustment) || 0), 0);
 }
 
+/* Build ERB-compatible product sub-object for cart items. */
+function cartProductShape(p) {
+  if (!p) return null;
+  const obj = p.toObject ? p.toObject() : p;
+
+  const catObj = obj.category || obj.categoryId;
+  const catName = typeof catObj === 'string' ? catObj : (catObj?.name || '');
+  const inventory = obj.stockQty || obj.inventory || 0;
+
+  return {
+    _id:                    obj._id,
+    name:                   obj.name,
+    price:                  obj.price || 0,
+    category:               catName,
+    image:                  obj.images?.[0] || obj.image || null,
+    totalInventory:         inventory,
+    haveCustomizationOption: (obj.variantGroups || []).length > 0,
+    id:                     obj._id ? String(obj._id) : '',
+  };
+}
+
 /* Build ERB-compatible cart shape. */
 async function cartShape(customerId) {
   const cart = await Cart.findOne({ customerId })
-    .populate('items.productId', 'name price images');
+    .populate('items.productId', 'name price images image category categoryId stockQty inventory variantGroups');
 
   const items     = cart?.items || [];
   const total     = parseFloat(items.reduce((s, i) => s + i.price * i.quantity, 0).toFixed(2));
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 
-  // Map productId → product for ERB compat (`product` field, not `productId`)
   const mappedItems = items.map(i => ({
-    _id:              i._id,
-    product:          i.productId,   // ERB uses `product` (populated)
-    name:             i.name,
-    price:            i.price,
-    image:            i.image,
+    product:          cartProductShape(i.productId),
     quantity:         i.quantity,
-    customization:    i.customization,
-    selectedVariants: i.selectedVariants,
-    selectedExtras:   i.selectedExtras,
-    notes:            i.notes,
+    price:            i.price,
+    notes:            i.notes || '',
+    specialRequests:  i.specialRequests || '',
+    selectedVariants: i.selectedVariants || [],
+    _id:              i._id,
   }));
 
   return { items: mappedItems, total, itemCount };

@@ -46,6 +46,7 @@ function productShape(p) {
     description:      obj.description || '',
     price:            obj.price || 0,
     category:         catName,
+    images:           obj.images?.length ? obj.images : (obj.image ? [obj.image] : []),
     image:            obj.images?.[0] || obj.image || null,
     rate:             obj.avgRating    || obj.rate         || 0,
     reviewsCount:     obj.ratingCount  || obj.reviewsCount || 0,

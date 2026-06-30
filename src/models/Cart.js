@@ -10,6 +10,7 @@ const cartItemSchema = new mongoose.Schema({
   selectedVariants: [mongoose.Schema.Types.Mixed],
   selectedExtras: [mongoose.Schema.Types.Mixed],
   notes: String,
+  specialRequests: String,
 }, { timestamps: true });
 
 const cartSchema = new mongoose.Schema({

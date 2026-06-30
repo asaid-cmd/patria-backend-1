@@ -14,7 +14,7 @@ exports.getCategories = async (req, res) => {
         ...cat,
         // Count by both ObjectId ref and name string (ERB stores category as name string)
         productsCount: await Product.countDocuments({
-          $or: [{ category: cat._id }, { category: cat.name }],
+          $or: [{ category: cat._id }, { categoryId: cat._id }],
           isActive: true,
         }),
       }))

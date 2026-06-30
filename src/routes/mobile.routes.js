@@ -748,23 +748,29 @@ router.delete('/cart/clear', verifyCustomer, cartController.clearCart);
  *             type: object
  *             required: [items]
  *             properties:
- *               orderType:   { type: string, enum: [Delivery, takeaway], example: Delivery }
+ *               orderType:
+ *                 type: string
+ *                 enum: [Delivery, takeaway]
+ *                 example: Delivery
  *               items:
  *                 type: array
  *                 items:
  *                   type: object
  *                   properties:
- *                     product:  { type: string }
- *                     name:     { type: string }
- *                     quantity: { type: integer }
- *                     price:    { type: number }
+ *                     product:          { type: string, description: Product ObjectId }
+ *                     name:             { type: string }
+ *                     quantity:         { type: integer }
+ *                     price:            { type: number }
+ *                     notes:            { type: string }
+ *                     selectedVariants: { type: array, items: { type: object } }
+ *                     selectedExtras:   { type: array, items: { type: object } }
  *               customer:
  *                 type: object
  *                 properties:
  *                   name:    { type: string }
  *                   phone:   { type: string }
  *                   address: { type: string }
- *                   region:  { type: string, description: Zone ID }
+ *                   region:  { type: string, description: "Zone ObjectId (optional — ignored if invalid)" }
  *                   location:
  *                     type: object
  *                     properties:
@@ -779,11 +785,45 @@ router.delete('/cart/clear', verifyCustomer, cartController.clearCart);
  *               payment:
  *                 type: object
  *                 properties:
- *                   method: { type: string, enum: [Cash, Online] }
- *               notes:      { type: string }
- *               couponCode: { type: string }
+ *                   method:
+ *                     type: string
+ *                     enum: [Cash, Online]
+ *                     description: "Both 'Cash' and 'Online' accepted (case-insensitive)"
+ *                     example: Cash
+ *               notes:          { type: string }
+ *               couponCode:     { type: string }
+ *               pointsToRedeem: { type: integer, description: Loyalty points to redeem (min 50) }
  *     responses:
- *       201: { description: Order placed — appears on dashboard instantly }
+ *       201:
+ *         description: Order placed successfully — appears on dashboard instantly
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:           { type: string }
+ *                 orderId:       { type: string, example: "ORD-874321" }
+ *                 status:        { type: string, example: pending }
+ *                 type:          { type: string, example: Delivery }
+ *                 items:         { type: array, items: { type: object } }
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     subtotal:              { type: number }
+ *                     deliveryFee:           { type: number }
+ *                     discount:              { type: number }
+ *                     total:                 { type: number }
+ *                     estimatedPointsEarned: { type: integer }
+ *                 paymentMethod:         { type: string }
+ *                 couponCode:            { type: string, nullable: true }
+ *                 pointsRedeemed:        { type: integer }
+ *                 pointsDiscountAmount:  { type: number }
+ *                 estimatedPointsEarned: { type: integer }
+ *                 createdAt:             { type: string, format: date-time }
+ *       400:
+ *         description: Validation error (invalid coupon, insufficient points, missing items)
+ *       404:
+ *         description: Customer not found
  */
 router.post('/orders', verifyCustomer, orderController.placeCustomerOrder);
 
@@ -792,17 +832,45 @@ router.post('/orders', verifyCustomer, orderController.placeCustomerOrder);
  * /mobile/orders:
  *   get:
  *     summary: Get customer's order history
+ *     description: "Returns a direct array (not wrapped in data object). Sorted newest first."
  *     tags: [Mobile — Orders]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 50 }
  *     responses:
- *       200: { description: Paginated order history }
+ *       200:
+ *         description: "Direct array of order objects (no pagination wrapper)"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:            { type: string }
+ *                   orderId:        { type: string, example: "ORD-874321" }
+ *                   status:         { type: string, enum: [pending, confirmed, preparing, ready, served, completed, cancelled] }
+ *                   deliveryStatus: { type: string, nullable: true }
+ *                   type:           { type: string, example: Delivery }
+ *                   customer:       { type: object }
+ *                   items:          { type: array, items: { type: object } }
+ *                   summary:
+ *                     type: object
+ *                     properties:
+ *                       subtotal:              { type: number }
+ *                       deliveryFee:           { type: number }
+ *                       discount:              { type: number }
+ *                       total:                 { type: number }
+ *                       estimatedPointsEarned: { type: integer }
+ *                   totalPrice:            { type: number }
+ *                   paymentMethod:         { type: string }
+ *                   isReviewed:            { type: boolean }
+ *                   createdAt:             { type: string, format: date-time }
  */
 router.get('/orders', verifyCustomer, orderController.getMyOrders);
 // ERB alias — must be BEFORE /:id to avoid ObjectId cast error

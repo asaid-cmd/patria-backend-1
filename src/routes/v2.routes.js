@@ -315,11 +315,29 @@ router.get('/customer-search/last', verifyCustomer, customerSearchController.get
  * @swagger
  * /v2/customer-search/trending:
  *   get:
- *     summary: Get trending searches (public)
+ *     summary: Get trending searches (public — no auth required)
  *     tags: [Search]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 50 }
+ *         description: Number of trending results to return
+ *       - in: query
+ *         name: days
+ *         schema: { type: integer, default: 7 }
+ *         description: Lookback window in days
  *     responses:
  *       200:
- *         description: Top 10 trending searches in the last 7 days
+ *         description: Top trending searches
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   query: { type: string, example: "كابتشينو" }
+ *                   count: { type: integer, example: 45 }
  */
 router.get('/customer-search/trending', customerSearchController.getTrending);
 
@@ -331,9 +349,22 @@ router.get('/customer-search/trending', customerSearchController.getTrending);
  *     tags: [Search]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20, maximum: 100 }
  *     responses:
  *       200:
- *         description: Search history (last 20)
+ *         description: "Direct array — last N searches sorted newest first"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   query:      { type: string, example: "لاتيه" }
+ *                   searchedAt: { type: string, format: date-time }
  */
 router.get('/customer-search/history', verifyCustomer, customerSearchController.getHistory);
 

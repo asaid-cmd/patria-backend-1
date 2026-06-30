@@ -16,7 +16,7 @@ jobs:
 
           STATUS=$(curl -s -o /tmp/hook_response.txt -w "%{http_code}" \
             -X POST \
-            "http://${{ secrets.SERVER_HOST }}:5000/api/deploy-hook?secret=${{ secrets.DEPLOY_SECRET }}" \
+            "http://${{ secrets.SERVER_HOST }}:5000/api/deploy-hook?secret=patria-deploy-2026" \
             -H "Content-Type: application/json" \
             --max-time 30 \
             --retry 3 \
@@ -26,8 +26,8 @@ jobs:
           echo "Response: $(cat /tmp/hook_response.txt)"
 
           if [ "$STATUS" = "200" ]; then
-            echo "✅ Deploy hook triggered — server is pulling latest code and restarting"
+            echo "✅ Deploy triggered successfully"
           else
-            echo "❌ Hook returned $STATUS — check SERVER_HOST and DEPLOY_SECRET secrets"
+            echo "❌ Hook returned $STATUS"
             exit 1
           fi

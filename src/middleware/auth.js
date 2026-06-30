@@ -29,6 +29,9 @@ const authorize = (...allowedRoles) => {
     // Mobile customer tokens carry no `role` → treat as 'user'
     const role = req.user.role || 'user';
 
+    // superadmin bypasses all role checks
+    if (role === 'superadmin') return next();
+
     if (!allowedRoles.includes(role)) {
       return res.status(403).json({ message: 'ممنوع — صلاحيات غير كافية' });
     }

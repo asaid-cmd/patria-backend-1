@@ -163,28 +163,28 @@ router.get('/stats', verifyToken, subscriptionController.getSubscriptionStats);
  *             type: object
  *             required:
  *               - customerId
- *               - items
+ *               - productId
+ *               - quantity
  *               - frequency
+ *               - nextDeliveryDate
  *             properties:
  *               customerId:
  *                 type: string
- *               items:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     productId:
- *                       type: string
- *                     quantity:
- *                       type: integer
+ *                 example: "6a38d30e19a2c87366e60a89"
+ *               productId:
+ *                 type: string
+ *                 example: "6a3bcc7b0d47bc56d20caa8c"
+ *               quantity:
+ *                 type: integer
+ *                 example: 3
  *               frequency:
  *                 type: string
- *                 enum: [daily, weekly, biweekly, monthly]
- *               startDate:
+ *                 enum: [weekly, bi_weekly, monthly]
+ *                 example: "weekly"
+ *               nextDeliveryDate:
  *                 type: string
- *                 format: date
- *               deliveryAddress:
- *                 type: string
+ *                 format: date-time
+ *                 example: "2026-07-07T00:00:00.000Z"
  *     responses:
  *       201:
  *         description: Subscription created successfully

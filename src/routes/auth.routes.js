@@ -481,9 +481,19 @@ router.post('/register', customerAuthController.register);
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', (req, res, next) => {
-  if (req.body.phone && !req.body.email) {
+router.post('/login', async (req, res, next) => {
+  const { phone, email } = req.body;
+  // Phone-only login → always customer
+  if (phone && !email) {
     return customerAuthController.login(req, res, next);
+  }
+  // Email login → check Customer collection first, fall through to staff
+  if (email) {
+    try {
+      const Customer = require('../models/Customer');
+      const isCustomer = await Customer.findOne({ email }).select('_id').lean();
+      if (isCustomer) return customerAuthController.login(req, res, next);
+    } catch (_) { /* fall through to staff login */ }
   }
   return authController.login(req, res, next);
 });

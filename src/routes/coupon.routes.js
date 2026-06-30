@@ -1,9 +1,54 @@
 const express = require('express');
 const couponController = require('../controllers/couponController');
+const offerController = require('../controllers/offerController');
 const { verifyToken, authorize } = require('../middleware/auth');
 const { ROLES } = require('../config/constants');
 
 const router = express.Router();
+
+const verifyCustomer = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.role === 'driver') return res.status(403).json({ message: 'Customer access required' });
+    next();
+  });
+};
+
+/**
+ * @swagger
+ * /coupons/validate:
+ *   post:
+ *     summary: "[MOBILE] Validate a coupon code and get discount amount"
+ *     tags: [Coupons]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [code]
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 example: WELCOME20
+ *               orderTotal:
+ *                 type: number
+ *                 example: 300
+ *     responses:
+ *       200:
+ *         description: Coupon applied — returns discount amount
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 discount: { type: number, example: 60 }
+ *                 message:  { type: string, example: "تم تطبيق الخصم بنجاح" }
+ *       404:
+ *         description: Invalid or expired coupon code
+ */
+router.post('/validate', verifyCustomer, offerController.validateCoupon);
 
 /**
  * @swagger

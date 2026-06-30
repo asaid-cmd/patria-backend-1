@@ -136,8 +136,10 @@ exports.placeCustomerOrder = async (req, res) => {
   try {
     const {
       orderType, items, customer, summary,
-      payment, notes, couponCode, pointsToRedeem,
+      payment, notes, pointsToRedeem,
     } = req.body;
+    // Flutter sends coupon in summary.coupon.code; also support top-level couponCode
+    const couponCode = req.body.couponCode || summary?.coupon?.code || null;
 
     if (!items || !items.length) return res.status(400).json({ message: 'items مطلوبة' });
 
@@ -203,10 +205,11 @@ exports.placeCustomerOrder = async (req, res) => {
     const total = Math.max(0, subtotal - totalDiscount + deliveryFee);
 
     // 4. Save order
-    // Normalize payment method casing — Flutter sends "Cash"/"Online" but the
-    // schema enum only accepts lowercase "cash" (Online stays capitalized).
-    const paymentMethodMap = { cash: 'cash', Cash: 'cash', online: 'Online', Online: 'Online' };
-    const paymentMethod = paymentMethodMap[payment?.method] || 'cash';
+    // Normalize payment method — Flutter sends "Cash on Delivery" / "Cash" / "Online Payment" / "Online"
+    const method = payment?.method || '';
+    let paymentMethod = 'cash';
+    if (/online/i.test(method)) paymentMethod = 'Online';
+    else if (/cash|cod/i.test(method)) paymentMethod = 'cash';
 
     const order = await Order.create({
       type:               orderType || 'Delivery',

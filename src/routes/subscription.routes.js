@@ -2,8 +2,84 @@ const express = require('express');
 const subscriptionController = require('../controllers/subscriptionController');
 const { verifyToken, authorize } = require('../middleware/auth');
 const { ROLES } = require('../config/constants');
+const Subscription = require('../models/Subscription');
 
 const router = express.Router();
+
+const verifyCustomer = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.role === 'driver') return res.status(403).json({ message: 'Customer access required' });
+    next();
+  });
+};
+
+/**
+ * @swagger
+ * /subscriptions/my:
+ *   get:
+ *     summary: "[MOBILE] Get logged-in customer's subscriptions"
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of customer subscriptions
+ */
+router.get('/my', verifyCustomer, async (req, res) => {
+  try {
+    const subs = await Subscription.find({ customerId: req.user.id })
+      .populate('productId', 'name price images')
+      .sort({ createdAt: -1 });
+    res.json(subs);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/**
+ * @swagger
+ * /subscriptions/{id}/status:
+ *   patch:
+ *     summary: "[MOBILE] Update customer's own subscription status"
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: { type: string, enum: [active, paused, cancelled] }
+ *     responses:
+ *       200:
+ *         description: Subscription status updated
+ *       401:
+ *         description: Not authorized
+ *       404:
+ *         description: Subscription not found
+ */
+router.patch('/:id/status', verifyCustomer, async (req, res) => {
+  try {
+    const sub = await Subscription.findById(req.params.id);
+    if (!sub) return res.status(404).json({ message: 'الاشتراك غير موجود' });
+    if (sub.customerId?.toString() !== req.user.id?.toString()) {
+      return res.status(401).json({ message: 'غير مصرح' });
+    }
+    sub.status = req.body.status;
+    await sub.save();
+    res.json(sub);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 /**
  * @swagger

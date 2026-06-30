@@ -1,0 +1,29 @@
+name: Deploy via Self-Hosted Runner
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull latest code
+        run: |
+          cd /var/www/patria-backend-1
+          git pull origin main
+
+      - name: Rebuild and restart Docker
+        run: |
+          cd /var/www/patria-backend-1
+          docker compose down
+          docker compose up -d --build
+
+      - name: Verify containers are running
+        run: |
+          cd /var/www/patria-backend-1
+          docker compose ps
+          echo "✅ Deploy complete!"

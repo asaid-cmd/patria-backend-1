@@ -64,13 +64,13 @@ jobs:
 
             docker compose up -d --build
 
+            # Wait for container to be ready
 
+            sleep 10
 
-            # Optional/Recommended: If you are using Prisma or database migrations inside the backend container, 
+            # Seed coupons (upsert — safe to run multiple times)
 
-            # run the migration script inside the active container environment:
-
-            # docker compose exec -T backend npx prisma migrate deploy
+            docker compose exec -T backend npm run seed:coupons
 
 
 

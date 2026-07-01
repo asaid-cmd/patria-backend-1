@@ -127,6 +127,52 @@ exports.getProductById = async (req, res) => {
   }
 };
 
+/* ── Mobile: GET /api/mobile/products/trending  →  top ordered products */
+exports.getTopProducts = async (req, res) => {
+  try {
+    const Order = require('../models/Order');
+    const limit = parseInt(req.query.limit) || 10;
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // last 30 days
+
+    const topItems = await Order.aggregate([
+      { $match: { createdAt: { $gte: since } } },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: { $ifNull: ['$items.product', '$items.productId'] },
+          totalOrdered: { $sum: '$items.quantity' },
+        },
+      },
+      { $sort: { totalOrdered: -1 } },
+      { $limit: limit },
+    ]);
+
+    if (!topItems.length) {
+      // fallback: return newest active products
+      const products = await Product.find({ isActive: true })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .populate('categoryId category')
+        .lean();
+      return res.json(products.map(productShape));
+    }
+
+    const productIds = topItems.map(i => i._id).filter(Boolean);
+    const products   = await Product.find({ _id: { $in: productIds }, isActive: true })
+      .populate('categoryId category')
+      .lean();
+
+    // preserve order (most ordered first)
+    const ordered = productIds
+      .map(id => products.find(p => p._id.toString() === id.toString()))
+      .filter(Boolean);
+
+    res.json(ordered.map(productShape));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.rateProduct = async (req, res) => {
   try {
     const { rating } = req.body;

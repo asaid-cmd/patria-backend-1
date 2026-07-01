@@ -527,6 +527,23 @@ router.get('/products', productController.getProducts);
 
 /**
  * @swagger
+ * /mobile/products/trending:
+ *   get:
+ *     summary: Get top trending products (most ordered in last 30 days)
+ *     tags: [Mobile — Products]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *         description: Number of products to return
+ *     responses:
+ *       200:
+ *         description: Array of top trending products (same shape as /products)
+ */
+router.get('/products/trending', productController.getTopProducts);
+
+/**
+ * @swagger
  * /mobile/products/{id}:
  *   get:
  *     summary: Get single product (public)

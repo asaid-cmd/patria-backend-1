@@ -3,8 +3,17 @@
  * Response format matches ERB exactly — flat JSON, no wrapper.
  */
 
-const jwt      = require('jsonwebtoken');
-const Customer = require('../models/Customer');
+const jwt              = require('jsonwebtoken');
+const Customer         = require('../models/Customer');
+const whatsappService  = require('../services/whatsappService');
+
+/* Send OTP via WhatsApp if credentials are configured */
+async function sendOtpWhatsApp(phone, otp) {
+  const token = process.env.WHATSAPP_TOKEN;
+  if (!token || token === 'your_whatsapp_token') return; // not configured yet
+  const msg = `كود التحقق الخاص بك هو: ${otp}\nصالح لمدة 10 دقائق.`;
+  whatsappService.sendWhatsAppMessage(phone, msg).catch(() => {});
+}
 
 // Same token shape as ERB (role embedded for protectAny middleware)
 const generateToken = (id) =>
@@ -56,12 +65,11 @@ exports.register = async (req, res) => {
       phoneVerified: false,
     });
 
-    // In production: send OTP via WhatsApp
-    // whatsappService.sendMessage(phone, `كود التحقق: ${otp}`).catch(() => {});
+    sendOtpWhatsApp(phone, otp);
 
     res.status(201).json({
       ...userShape(customer, generateToken(customer._id)),
-      verificationCode: process.env.NODE_ENV !== 'production' ? otp : undefined,
+      verificationCode: otp,
     });
   } catch (err) {
     if (err.code === 11000) {
@@ -126,10 +134,11 @@ exports.sendVerification = async (req, res) => {
     });
     otpLastSentMap.set(phone, now);
 
-    // In production: send via WhatsApp
+    sendOtpWhatsApp(phone, otp);
+
     res.json({
       message: 'تم إرسال كود التحقق',
-      ...(process.env.NODE_ENV !== 'production' ? { verificationCode: otp } : {}),
+      verificationCode: otp,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -179,10 +188,12 @@ exports.forgotPassword = async (req, res) => {
       { otp, otpExpiry: new Date(Date.now() + 10 * 60 * 1000) }
     );
 
+    sendOtpWhatsApp(req.body.phone, otp);
+
     // Always return 200 (don't reveal if phone exists)
     res.json({
       message: 'تم إرسال كود إعادة الضبط',
-      ...(process.env.NODE_ENV !== 'production' ? { verificationCode: otp } : {}),
+      verificationCode: otp,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

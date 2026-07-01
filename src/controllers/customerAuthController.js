@@ -3,16 +3,14 @@
  * Response format matches ERB exactly — flat JSON, no wrapper.
  */
 
-const jwt              = require('jsonwebtoken');
-const Customer         = require('../models/Customer');
-const whatsappService  = require('../services/whatsappService');
+const jwt = require('jsonwebtoken');
+const Customer = require('../models/Customer');
+const waClient = require('../services/whatsappClientService');
 
-/* Send OTP via WhatsApp if credentials are configured */
+/* Send OTP via WhatsApp Web client (QR-based) */
 async function sendOtpWhatsApp(phone, otp) {
-  const token = process.env.WHATSAPP_TOKEN;
-  if (!token || token === 'your_whatsapp_token') return; // not configured yet
-  const msg = `كود التحقق الخاص بك هو: ${otp}\nصالح لمدة 10 دقائق.`;
-  whatsappService.sendWhatsAppMessage(phone, msg).catch(() => {});
+  const msg = `كود التحقق الخاص بك من Patria:\n*${otp}*\nصالح لمدة 10 دقائق.`;
+  waClient.sendMessage(phone, msg).catch(() => {});
 }
 
 // Same token shape as ERB (role embedded for protectAny middleware)

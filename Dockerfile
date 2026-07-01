@@ -1,7 +1,17 @@
 FROM node:18-alpine
 
-# Install git (needed for deploy hook)
-RUN apk add --no-cache git
+# Install git + Chromium for whatsapp-web.js (puppeteer)
+RUN apk add --no-cache \
+    git \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 WORKDIR /app
 
